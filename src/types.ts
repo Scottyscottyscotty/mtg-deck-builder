@@ -16,6 +16,11 @@ export interface ScryfallCard {
     normal?: string;
     large?: string;
   };
+  prices?: {
+    usd?: string | null;
+    usd_foil?: string | null;
+    usd_etched?: string | null;
+  };
 }
 
 // Deck list entry
@@ -36,6 +41,8 @@ export interface DeckAnalysis {
   cardSuggestions: Array<{
     card: string;
     reasoning: string;
+    priceTier?: string;
+    price?: number;
   }>;
   bracketRating: number;
   bracketReasoning: string;

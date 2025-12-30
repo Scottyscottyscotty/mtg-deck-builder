@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { DeckCard, DeckAnalysis } from './types.js';
+import { getCardPrices, formatPrice } from './pricingService.js';
 
 /**
  * Analyzes a deck using Claude
@@ -42,7 +43,12 @@ Please analyze this deck and provide:
 
 6. **Potential Combos**: Suggest new combos or synergies that could be added with different card choices.
 
-7. **Card Suggestions**: Recommend 5-10 specific cards that would improve this deck, with detailed reasoning for each.
+7. **Card Suggestions**: Recommend 8-12 specific cards that would improve this deck across DIFFERENT PRICE RANGES:
+   - Include budget options (under $5)
+   - Include mid-range options ($5-25)
+   - Include premium/expensive options ($25+)
+
+   For each card, provide detailed reasoning explaining why it fits the deck. Try to suggest cards at various price points so players have options regardless of budget.
 
 8. **Bracket Rating**: Rate this deck on the Commander Bracket system (1-4):
    - Bracket 1: Precon level, very casual
@@ -100,6 +106,31 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
   }
 
   const analysis: DeckAnalysis = JSON.parse(analysisText);
+
+  // Enrich card suggestions with pricing data
+  console.log('💰 Fetching prices for card suggestions...');
+  const cardNames = analysis.cardSuggestions.map(s => s.card);
+  const priceMap = await getCardPrices(cardNames);
+
+  // Add price information to each suggestion
+  analysis.cardSuggestions = analysis.cardSuggestions.map(suggestion => {
+    const priceInfo = priceMap.get(suggestion.card.toLowerCase());
+    return {
+      ...suggestion,
+      price: priceInfo?.price ?? undefined,
+      priceTier: priceInfo?.priceTier ?? '?',
+    };
+  });
+
+  // Sort suggestions by price tier (budget first, then mid-range, then expensive)
+  const tierOrder: Record<string, number> = { '$': 1, '$$': 2, '$$$': 3, '?': 4 };
+  analysis.cardSuggestions.sort((a, b) => {
+    const tierA = tierOrder[a.priceTier || '?'] || 4;
+    const tierB = tierOrder[b.priceTier || '?'] || 4;
+    return tierA - tierB;
+  });
+
+  console.log('✅ Pricing data added\n');
 
   return analysis;
 }

@@ -66,10 +66,13 @@ export function formatAnalysis(analysis: DeckAnalysis): string {
 
   // Card Suggestions
   if (analysis.cardSuggestions.length > 0) {
-    lines.push('🎯 CARD SUGGESTIONS');
+    lines.push('🎯 CARD SUGGESTIONS (Sorted by Price)');
     lines.push('───────────────────────────────────────────────────────────────');
     analysis.cardSuggestions.forEach((suggestion, i) => {
-      lines.push(`  ${i + 1}. ${suggestion.card}`);
+      const priceDisplay = suggestion.price !== undefined
+        ? `${suggestion.priceTier} ($${suggestion.price.toFixed(2)})`
+        : suggestion.priceTier || '?';
+      lines.push(`  ${i + 1}. ${suggestion.card} — ${priceDisplay}`);
       lines.push(`     → ${suggestion.reasoning}`);
       lines.push('');
     });

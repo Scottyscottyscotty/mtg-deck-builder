@@ -8,7 +8,7 @@ AI-powered Magic: The Gathering deck analysis using Claude 4.5 and Scryfall.
 - 🧠 **Deep Analysis** - Claude analyzes strategy, synergies, and power level
 - 💡 **Combo Detection** - Identifies existing combos and suggests new ones
 - 🎯 **Weakness Identification** - Spots vulnerabilities in your deck
-- 📈 **Card Suggestions** - Get recommendations with detailed reasoning
+- 📈 **Card Suggestions with Pricing** - Get recommendations across all budgets ($, $$, $$$) with real TCGplayer prices
 - 🏆 **Bracket Rating** - Power level assessment (1-4 scale)
 - 🔄 **Deck Comparison** - Compare two decks side-by-side
 - 📥 **Import from URLs** - Support for Moxfield, Archidekt, and TappedOut
@@ -192,6 +192,16 @@ Options:
 - Deck comparison: ~$1.00-2.00
 
 Costs vary based on deck size and complexity.
+
+## Card Pricing Tiers
+
+Card suggestions are automatically categorized by price and include real TCGplayer pricing:
+
+- **$ (Budget)**: Cards under $5 - Great for budget builds
+- **$$ (Mid-range)**: Cards $5-$25 - Solid upgrades without breaking the bank
+- **$$$ (Premium)**: Cards $25+ - Powerful staples and high-end options
+
+Suggestions are sorted by price (budget first) so you can easily find cards that fit your budget. Prices are fetched from Scryfall's TCGplayer integration.
 
 ## Examples
 

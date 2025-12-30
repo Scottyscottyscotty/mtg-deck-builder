@@ -238,9 +238,12 @@ function displayAnalysis(analysis) {
   }
 
   if (analysis.cardSuggestions.length > 0) {
-    html += '<strong>Card Suggestions:</strong>\n';
+    html += '<strong>Card Suggestions (Sorted by Price):</strong>\n';
     analysis.cardSuggestions.forEach((s, i) => {
-      html += `${i + 1}. ${s.card}\n`;
+      const priceDisplay = s.price !== undefined
+        ? `${s.priceTier} ($${s.price.toFixed(2)})`
+        : (s.priceTier || '?');
+      html += `${i + 1}. ${s.card} — ${priceDisplay}\n`;
       html += `   → ${s.reasoning}\n\n`;
     });
   }
@@ -248,7 +251,7 @@ function displayAnalysis(analysis) {
   html += '<strong>Overall Assessment:</strong>\n';
   html += `${analysis.overallAssessment}\n`;
 
-  el.textContent = html;
+  el.innerHTML = html.replace(/\n/g, '<br>');
 }
 
 // Display comparison
@@ -311,7 +314,7 @@ function displayComparison(comparison) {
     });
   }
 
-  el.textContent = html;
+  el.innerHTML = html.replace(/\n/g, '<br>');
 }
 
 // Utility functions

@@ -99,10 +99,13 @@ function generateMarkdown(analysis: DeckAnalysis, cards: DeckCard[]): string {
 
   // Card Suggestions
   if (analysis.cardSuggestions.length > 0) {
-    lines.push('## Card Suggestions');
+    lines.push('## Card Suggestions (Sorted by Price)');
     lines.push('');
     analysis.cardSuggestions.forEach((suggestion, i) => {
-      lines.push(`${i + 1}. **${suggestion.card}**`);
+      const priceDisplay = suggestion.price !== undefined
+        ? `${suggestion.priceTier} ($${suggestion.price.toFixed(2)})`
+        : suggestion.priceTier || '?';
+      lines.push(`${i + 1}. **${suggestion.card}** — ${priceDisplay}`);
       lines.push(`   - ${suggestion.reasoning}`);
       lines.push('');
     });
