@@ -193,6 +193,213 @@ async function dropInAnalysis() {
   }
 }
 
+// Build deck
+async function buildDeck() {
+  const commander = document.getElementById('build-commander').value.trim();
+  const novelty = parseInt(document.getElementById('build-novelty').value);
+  const model = document.getElementById('build-model').value;
+
+  if (!commander) {
+    showError('build-error', 'Please enter a commander name');
+    return;
+  }
+
+  hideError('build-error');
+  hideResults('build-results');
+  showLoading('build-loading');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/build-deck`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commander, novelty, model }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Deck building failed');
+    }
+
+    displayBuiltDeck(data.deck, commander);
+    showResults('build-results');
+  } catch (error) {
+    showError('build-error', error.message);
+  } finally {
+    hideLoading('build-loading');
+  }
+}
+
+// Find card for deck
+async function findCardForDeck() {
+  const cardName = document.getElementById('find-card-name').value.trim();
+
+  if (!cardName) {
+    showError('find-error', 'Please enter a card name');
+    return;
+  }
+
+  hideError('find-error');
+  hideResults('find-results');
+  showLoading('find-loading');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/find-card`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardName }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Card search failed');
+    }
+
+    displayCardMatch(data.result, cardName);
+    showResults('find-results');
+  } catch (error) {
+    showError('find-error', error.message);
+  } finally {
+    hideLoading('find-loading');
+  }
+}
+
+// Display built deck
+function displayBuiltDeck(deck, commander) {
+  const el = document.getElementById('build-results');
+
+  let html = `<h2>🏗️ Built Deck: ${escapeHtml(commander)}</h2>`;
+
+  // Strategy
+  html += '<div class="section">';
+  html += '<h3>🎯 Strategy</h3>';
+  html += `<p>${escapeHtml(deck.strategy)}</p>`;
+  html += '</div>';
+
+  // Categories breakdown
+  if (deck.categories) {
+    html += '<div class="section">';
+    html += '<h3>📊 Card Categories</h3>';
+    html += '<ul>';
+    for (const [category, count] of Object.entries(deck.categories)) {
+      html += `<li><strong>${category.charAt(0).toUpperCase() + category.slice(1)}:</strong> ${count} cards</li>`;
+    }
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Mana curve
+  if (deck.manaCurve) {
+    html += '<div class="section">';
+    html += '<h3>⚡ Mana Curve</h3>';
+    html += `<p>${escapeHtml(deck.manaCurve)}</p>`;
+    html += '</div>';
+  }
+
+  // Key cards
+  if (deck.keyCards && deck.keyCards.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>⭐ Key Cards</h3>';
+    html += '<ul>';
+    deck.keyCards.forEach(card => {
+      html += `<li>${wrapCardName(card)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Combos
+  if (deck.combos && deck.combos.length > 0) {
+    html += '<div class="section combo-section">';
+    html += '<h3>🔮 Combos</h3>';
+    html += '<ul>';
+    deck.combos.forEach(combo => {
+      html += `<li>${escapeHtml(combo)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Full deck list
+  html += '<div class="section">';
+  html += '<h3>📋 Complete Deck List (99 cards)</h3>';
+  html += '<p style="color: #999; margin-bottom: 10px;">Copy and paste this into your deck builder:</p>';
+
+  html += '<div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px; font-family: monospace; font-size: 14px; max-height: 400px; overflow-y: auto;">';
+  html += '<pre style="margin: 0; white-space: pre-wrap;">';
+  html += `Commander\n1 ${escapeHtml(commander)}\n\n`;
+  html += 'Deck\n';
+  deck.deckList.forEach(card => {
+    html += `1 ${escapeHtml(card)}\n`;
+  });
+  html += '</pre>';
+  html += '</div>';
+
+  html += '<button onclick="copyDeckList()" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📋 Copy to Clipboard</button>';
+  html += '</div>';
+
+  el.innerHTML = html;
+
+  // Store deck list for copying
+  window.currentDeckList = `Commander\n1 ${commander}\n\nDeck\n${deck.deckList.map(c => `1 ${c}`).join('\n')}`;
+
+  setupCardHoverListeners();
+}
+
+// Display card match
+function displayCardMatch(result, cardName) {
+  const el = document.getElementById('find-results');
+
+  let html = `<h2>🔍 Best Deck for ${wrapCardName(cardName)}</h2>`;
+
+  // Best match
+  if (result.bestMatch) {
+    html += '<div class="section">';
+    html += '<h3>🎯 Best Match</h3>';
+    html += `<p><strong>Deck:</strong> ${escapeHtml(result.bestMatch.deckName)} (${escapeHtml(result.bestMatch.archetype)})</p>`;
+    html += `<p><strong>Why it fits:</strong> ${escapeHtml(result.bestMatch.reasoning)}</p>`;
+
+    if (result.bestMatch.synergies && result.bestMatch.synergies.length > 0) {
+      html += '<p><strong>Synergies:</strong></p>';
+      html += '<ul>';
+      result.bestMatch.synergies.forEach(s => {
+        html += `<li>${escapeHtml(s)}</li>`;
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+  }
+
+  // Other matches
+  if (result.otherMatches && result.otherMatches.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>💡 Other Possible Matches</h3>';
+    result.otherMatches.forEach(match => {
+      html += '<div style="margin-bottom: 15px;">';
+      html += `<p><strong>${escapeHtml(match.deckName)}</strong></p>`;
+      html += `<p style="color: #999;">${escapeHtml(match.reasoning)}</p>`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+  setupCardHoverListeners();
+}
+
+// Copy deck list to clipboard
+function copyDeckList() {
+  if (window.currentDeckList) {
+    navigator.clipboard.writeText(window.currentDeckList).then(() => {
+      alert('Deck list copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy. Please manually select and copy the deck list.');
+    });
+  }
+}
+
 // Display drop-in results
 function displayDropInResults(data) {
   const el = document.getElementById('dropin-results');

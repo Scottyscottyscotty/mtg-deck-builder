@@ -271,6 +271,202 @@ app.get('/api/history/:id', async (req, res) => {
   }
 });
 
+// Build deck endpoint
+app.post('/api/build-deck', async (req, res) => {
+  try {
+    const { commander, novelty = 50, model = 'sonnet' } = req.body;
+
+    if (!commander) {
+      return res.status(400).json({ error: 'Commander is required' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const anthropic = new Anthropic({ apiKey });
+    const modelId = model === 'opus'
+      ? 'claude-opus-4-5-20251101'
+      : 'claude-sonnet-4-5-20250929';
+
+    const prompt = buildDeckPrompt(commander, novelty);
+
+    console.log(`\n🏗️  Building deck for ${commander} (novelty: ${novelty}%)...\n`);
+
+    const response = await anthropic.messages.create({
+      model: modelId,
+      max_tokens: 8192,
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    let deckText = content.text.trim();
+    if (deckText.startsWith('```')) {
+      deckText = deckText.replace(/^```(?:json)?\\n/, '').replace(/\\n```$/, '');
+    }
+
+    const deckData = JSON.parse(deckText);
+
+    res.json({
+      success: true,
+      deck: deckData,
+    });
+  } catch (error: any) {
+    console.error('Build deck error:', error);
+    res.status(500).json({ error: error.message || 'Deck building failed' });
+  }
+});
+
+// Find card for deck endpoint
+app.post('/api/find-card', async (req, res) => {
+  try {
+    const { cardName } = req.body;
+
+    if (!cardName) {
+      return res.status(400).json({ error: 'Card name is required' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    // Load history
+    const history = await listHistory();
+
+    if (history.length === 0) {
+      return res.status(400).json({ error: 'No decks in history. Analyze some decks first!' });
+    }
+
+    // Use Claude to analyze which deck would benefit most
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const anthropic = new Anthropic({ apiKey });
+
+    const prompt = buildFindCardPrompt(cardName, history);
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 2048,
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    let resultText = content.text.trim();
+    if (resultText.startsWith('```')) {
+      resultText = resultText.replace(/^```(?:json)?\\n/, '').replace(/\\n```$/, '');
+    }
+
+    const result = JSON.parse(resultText);
+
+    res.json({
+      success: true,
+      result,
+    });
+  } catch (error: any) {
+    console.error('Find card error:', error);
+    res.status(500).json({ error: error.message || 'Card search failed' });
+  }
+});
+
+function buildDeckPrompt(commander: string, novelty: number): string {
+  const noveltyLevel = novelty >= 75 ? 'MAXIMUM' : novelty >= 50 ? 'BALANCED' : 'META';
+
+  return `You are an expert Magic: The Gathering deck builder. Build a complete 99-card Commander deck for ${commander}.
+
+## Novelty Level: ${noveltyLevel} (${novelty}%)
+
+${novelty >= 75
+  ? '- Focus on unique, underplayed, and creative card choices\n- Avoid mainstream staples unless absolutely critical\n- Look for hidden gems and spicy tech'
+  : novelty >= 50
+  ? '- Balance between proven cards and creative alternatives\n- Include some staples but also interesting choices\n- Prefer cards that fit the strategy well'
+  : '- Use the best cards available regardless of popularity\n- Include format staples and powerful cards\n- Focus on consistency and power level'}
+
+## Requirements
+
+1. Build a complete 99-card deck (do NOT include the commander in the count)
+2. Include appropriate mana base (lands)
+3. Balance the mana curve
+4. Include ramp, card draw, removal, and win conditions
+5. Identify key synergies and combos
+6. Explain the deck's strategy
+
+## Output Format
+
+Respond with ONLY valid JSON (no markdown, no code blocks):
+
+{
+  "deckList": ["Card Name", "Card Name", ...],
+  "strategy": "2-3 sentence explanation of the deck's game plan",
+  "keyCards": ["Card Name", ...],
+  "combos": ["Description of combo", ...],
+  "manaCurve": "Brief analysis of the mana curve",
+  "categories": {
+    "lands": 36,
+    "ramp": 10,
+    "draw": 10,
+    "removal": 8,
+    "threats": 20,
+    "other": 15
+  }
+}
+
+CRITICAL: Suggest only REAL Magic cards. Do not hallucinate cards.`;
+}
+
+function buildFindCardPrompt(cardName: string, history: any[]): string {
+  const deckSummaries = history.map(h => ({
+    id: h.id,
+    name: h.deckName || 'Unnamed Deck',
+    archetype: h.archetype,
+    bracketRating: h.bracketRating,
+  }));
+
+  return `You are an expert Magic: The Gathering deck analyst. The user has a card "${cardName}" and wants to know which of their saved decks would benefit most from adding it.
+
+## Saved Decks
+
+${deckSummaries.map((d, i) => `${i + 1}. ${d.name} (${d.archetype}) - Bracket ${d.bracketRating}/4`).join('\n')}
+
+## Your Task
+
+Analyze which deck would benefit most from adding "${cardName}". Consider:
+- Card synergy with the deck's strategy
+- How it fills gaps or weaknesses
+- Power level compatibility with bracket rating
+- Color identity match
+
+## Output Format
+
+Respond with ONLY valid JSON (no markdown, no code blocks):
+
+{
+  "bestMatch": {
+    "deckName": "Name of best matching deck",
+    "archetype": "Archetype",
+    "reasoning": "Why this card fits this deck",
+    "synergies": ["What it synergizes with", ...]
+  },
+  "otherMatches": [
+    {
+      "deckName": "Name",
+      "reasoning": "Why it could fit"
+    }
+  ]
+}`;
+}
+
 function buildCutRecommendationPrompt(context: {
   currentDeck: string[];
   additions: string[];
