@@ -113,6 +113,40 @@
       resize: vertical;
     }
 
+    input[type="range"] {
+      padding: 0;
+      height: 8px;
+      background: linear-gradient(to right, #667eea 0%, #764ba2 100%);
+      outline: none;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    input[type="range"]:hover {
+      opacity: 1;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      cursor: pointer;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      cursor: pointer;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      border: none;
+    }
+
     textarea {
       min-height: 200px;
     }
@@ -250,6 +284,61 @@
         flex-direction: column;
       }
     }
+
+    /* Card hover preview */
+    .card-name {
+      color: #667eea;
+      cursor: help;
+      text-decoration: underline dotted;
+      position: relative;
+    }
+
+    .card-preview {
+      position: fixed;
+      z-index: 1000;
+      display: none;
+      pointer-events: none;
+      background: #1a1a2e;
+      border: 2px solid #667eea;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      max-width: 300px;
+    }
+
+    .card-preview img {
+      width: 100%;
+      border-radius: 8px;
+      display: block;
+    }
+
+    .card-preview.active {
+      display: block;
+    }
+
+    .shop-links {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.85em;
+    }
+
+    .shop-link {
+      display: inline-block;
+      margin-right: 10px;
+      padding: 4px 8px;
+      background: rgba(102, 126, 234, 0.2);
+      border: 1px solid rgba(102, 126, 234, 0.4);
+      border-radius: 4px;
+      color: #667eea;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .shop-link:hover {
+      background: rgba(102, 126, 234, 0.4);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -275,8 +364,30 @@
         </div>
 
         <div class="form-group">
+          <label for="commander-name">Commander (optional - enables EDHREC features)</label>
+          <input type="text" id="commander-name" placeholder="e.g., Atraxa, Praetors' Voice">
+        </div>
+
+        <div class="form-group">
           <label for="deck-list">Deck List</label>
           <textarea id="deck-list" placeholder="1 Sol Ring&#10;3 Swamp&#10;4 Lightning Bolt&#10;..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="novelty">
+            Novelty Level: <span id="novelty-value">50</span>%
+            <span style="color: #999; font-size: 0.9em; font-weight: normal;">
+              (0 = Best cards, 100 = Maximum spice)
+            </span>
+          </label>
+          <input type="range" id="novelty" min="0" max="100" value="50"
+                 oninput="document.getElementById('novelty-value').textContent = this.value"
+                 style="width: 100%; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; color: #999; font-size: 0.85em; margin-top: 5px;">
+            <span>Classic (Meta)</span>
+            <span>Balanced</span>
+            <span>Unique (Anti-Meta)</span>
+          </div>
         </div>
 
         <div class="form-group">
@@ -369,6 +480,11 @@
         </ul>
       </div>
     </div>
+  </div>
+
+  <!-- Card preview popup -->
+  <div id="card-preview" class="card-preview">
+    <img id="card-preview-img" src="" alt="Card preview">
   </div>
 
   <script src="app.js"></script>

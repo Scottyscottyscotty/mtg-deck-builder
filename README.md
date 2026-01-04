@@ -175,7 +175,15 @@ npm run web
 
 Then open http://localhost:3000
 
-**Note:** Web UI will be updated with new features in the next version!
+**Web UI Features:**
+- 🎯 **Commander Input** - Specify your commander to enable EDHREC features
+- 🎚️ **Novelty Slider** - Control suggestion uniqueness (0-100%)
+- 🖼️ **Card Hover Previews** - Moxfield-style card image previews on hover
+- 🛒 **Shopping Links** - Direct links to TCGplayer and Card Kingdom for each suggested card
+- 🔮 **Combo Display** - See Commander Spellbook combos and near-miss combos
+- 📊 **Popularity Tags** - View EDHREC popularity ratings ([Staple 78%], [Spicy 15%])
+- 💰 **Price Tiers** - Card suggestions sorted by popularity and price
+- ⚠️ **Partial Deck Support** - Get completion suggestions for incomplete decks
 
 ## How It Works
 

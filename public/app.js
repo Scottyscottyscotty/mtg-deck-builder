@@ -24,6 +24,8 @@ function switchTab(tabName) {
 async function analyzeDeck() {
   const deckList = document.getElementById('deck-list').value.trim();
   const deckName = document.getElementById('deck-name').value.trim();
+  const commander = document.getElementById('commander-name').value.trim();
+  const novelty = parseInt(document.getElementById('novelty').value);
   const model = document.getElementById('model').value;
 
   if (!deckList) {
@@ -39,7 +41,13 @@ async function analyzeDeck() {
     const response = await fetch(`${API_BASE}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deckList, deckName, model }),
+      body: JSON.stringify({
+        deckList,
+        deckName,
+        model,
+        commander: commander || undefined,
+        novelty
+      }),
     });
 
     const data = await response.json();
@@ -206,6 +214,14 @@ function displayAnalysis(analysis) {
   html += `<strong>Bracket Rating:</strong> ${analysis.bracketRating}/4 ${'⭐'.repeat(analysis.bracketRating)}\n`;
   html += `${analysis.bracketReasoning}\n\n`;
 
+  // Deck completeness info
+  if (analysis.deckCompleteness && analysis.deckCompleteness.isPartial) {
+    const dc = analysis.deckCompleteness;
+    html += `<strong style="color: #ff9f43;">⚠️ Partial Deck Detected:</strong>\n`;
+    html += `Currently ${dc.currentSize} cards out of ${dc.targetSize} needed.\n`;
+    html += `Suggestions below will help complete your deck!\n\n`;
+  }
+
   html += '<strong>Mana Curve Analysis:</strong>\n';
   html += `${analysis.manaCurveAnalysis}\n\n`;
 
@@ -220,6 +236,29 @@ function displayAnalysis(analysis) {
     html += `${i + 1}. ${w}\n`;
   });
   html += '\n';
+
+  // Commander Spellbook Combos
+  if (analysis.spellbookCombos && analysis.spellbookCombos.length > 0) {
+    html += '<strong>🔮 Commander Spellbook Combos (In Your Deck):</strong>\n';
+    analysis.spellbookCombos.forEach((combo, i) => {
+      html += `${i + 1}. ${wrapCardNames(combo.cards.join(' + '))}\n`;
+      html += `   → Result: ${combo.result}\n`;
+      if (combo.steps) {
+        html += `   → Steps: ${combo.steps}\n`;
+      }
+      html += '\n';
+    });
+  }
+
+  // Near-miss combos
+  if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
+    html += '<strong>🎯 Near-Miss Combos (Add 1-2 Cards):</strong>\n';
+    analysis.nearMissCombos.slice(0, 5).forEach((nearMiss, i) => {
+      html += `${i + 1}. Missing: ${wrapCardNames(nearMiss.missingCards.join(', '))}\n`;
+      html += `   → Result: ${nearMiss.result}\n`;
+      html += `   → You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}\n\n`;
+    });
+  }
 
   if (analysis.existingCombos.length > 0) {
     html += '<strong>Existing Combos:</strong>\n';
@@ -238,13 +277,20 @@ function displayAnalysis(analysis) {
   }
 
   if (analysis.cardSuggestions.length > 0) {
-    html += '<strong>Card Suggestions (Sorted by Price):</strong>\n';
+    html += '<strong>Card Suggestions:</strong>\n';
     analysis.cardSuggestions.forEach((s, i) => {
       const priceDisplay = s.price !== undefined
         ? `${s.priceTier} ($${s.price.toFixed(2)})`
         : (s.priceTier || '?');
-      html += `${i + 1}. ${s.card} — ${priceDisplay}\n`;
-      html += `   → ${s.reasoning}\n\n`;
+
+      // Popularity tag
+      const popTag = s.popularity && s.inclusionRate !== undefined
+        ? ` [${s.popularity} ${s.inclusionRate.toFixed(0)}%]`
+        : '';
+
+      html += `${i + 1}. ${wrapCardName(s.card)} — ${priceDisplay}${popTag}\n`;
+      html += `   → ${s.reasoning}\n`;
+      html += `   ${createShopLinks(s.card)}\n\n`;
     });
   }
 
@@ -252,6 +298,105 @@ function displayAnalysis(analysis) {
   html += `${analysis.overallAssessment}\n`;
 
   el.innerHTML = html.replace(/\n/g, '<br>');
+
+  // Setup card hover listeners
+  setupCardHoverListeners();
+}
+
+// Wrap card name with hover functionality
+function wrapCardName(cardName) {
+  return `<span class="card-name" data-card="${escapeHtml(cardName)}">${escapeHtml(cardName)}</span>`;
+}
+
+// Wrap multiple card names (handles "Card1, Card2 + Card3" format)
+function wrapCardNames(text) {
+  const cardPattern = /([A-Z][^,+]+?)(?=[,+]|$)/g;
+  return text.replace(cardPattern, (match) => {
+    const cardName = match.trim();
+    if (cardName.length > 2) {
+      return wrapCardName(cardName);
+    }
+    return match;
+  });
+}
+
+// Create shopping links for a card
+function createShopLinks(cardName) {
+  const encoded = encodeURIComponent(cardName);
+  const tcgUrl = `https://www.tcgplayer.com/search/magic/product?productLineName=magic&q=${encoded}`;
+  const cardKingdomUrl = `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${encoded}`;
+
+  return `<span class="shop-links">
+    🛒 Buy:
+    <a href="${tcgUrl}" target="_blank" class="shop-link">TCGplayer</a>
+    <a href="${cardKingdomUrl}" target="_blank" class="shop-link">Card Kingdom</a>
+  </span>`;
+}
+
+// Setup card hover preview listeners
+function setupCardHoverListeners() {
+  const cardNames = document.querySelectorAll('.card-name');
+  const preview = document.getElementById('card-preview');
+  const previewImg = document.getElementById('card-preview-img');
+
+  cardNames.forEach(el => {
+    el.addEventListener('mouseenter', async (e) => {
+      const cardName = el.dataset.card;
+
+      // Fetch card image from Scryfall
+      try {
+        const response = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}`);
+        if (response.ok) {
+          const cardData = await response.json();
+          const imageUrl = cardData.image_uris?.normal || cardData.card_faces?.[0]?.image_uris?.normal;
+
+          if (imageUrl) {
+            previewImg.src = imageUrl;
+            preview.classList.add('active');
+            positionPreview(e, preview);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load card preview:', error);
+      }
+    });
+
+    el.addEventListener('mousemove', (e) => {
+      if (preview.classList.contains('active')) {
+        positionPreview(e, preview);
+      }
+    });
+
+    el.addEventListener('mouseleave', () => {
+      preview.classList.remove('active');
+    });
+  });
+}
+
+// Position card preview near cursor
+function positionPreview(e, preview) {
+  const offset = 20;
+  let x = e.clientX + offset;
+  let y = e.clientY + offset;
+
+  // Keep preview on screen
+  const rect = preview.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth) {
+    x = e.clientX - rect.width - offset;
+  }
+  if (y + rect.height > window.innerHeight) {
+    y = e.clientY - rect.height - offset;
+  }
+
+  preview.style.left = x + 'px';
+  preview.style.top = y + 'px';
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Display comparison

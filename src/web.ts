@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { parseDeckList } from './deckParser.js';
 import { enrichDeckWithScryfall } from './scryfallClient.js';
 import { analyzeDeck } from './claudeAnalyzer.js';
+import { enhancedAnalyzeDeck } from './enhancedAnalyzer.js';
 import { compareDecks } from './deckComparison.js';
 import { importDeckFromUrl } from './deckSiteImporter.js';
 import { saveToHistory, listHistory, getHistoryEntry } from './history.js';
@@ -20,7 +21,13 @@ app.use(express.static('public'));
 // Analyze deck endpoint
 app.post('/api/analyze', async (req, res) => {
   try {
-    const { deckList, model = 'sonnet', deckName } = req.body;
+    const {
+      deckList,
+      model = 'sonnet',
+      deckName,
+      commander,
+      novelty = 50
+    } = req.body;
 
     if (!deckList) {
       return res.status(400).json({ error: 'Deck list is required' });
@@ -40,8 +47,18 @@ app.post('/api/analyze', async (req, res) => {
     // Enrich with Scryfall
     const enrichedCards = await enrichDeckWithScryfall(cards);
 
-    // Analyze
-    const analysis = await analyzeDeck(enrichedCards, apiKey, model as 'sonnet' | 'opus');
+    // Use enhanced analyzer if commander is specified or novelty is not default
+    const useEnhanced = commander || novelty !== 50;
+
+    const analysis = useEnhanced
+      ? await enhancedAnalyzeDeck(enrichedCards, apiKey, {
+          model: model as 'sonnet' | 'opus',
+          commander,
+          novelty,
+          enableCombos: true,
+          enablePopularity: true,
+        })
+      : await analyzeDeck(enrichedCards, apiKey, model as 'sonnet' | 'opus');
 
     // Save to history
     const historyId = await saveToHistory(enrichedCards, analysis, model, deckName);
@@ -155,7 +172,12 @@ app.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}`);
   console.log('');
   console.log('Features:');
-  console.log('  • Deck analysis with Claude');
+  console.log('  • Deck analysis with Claude 4.5');
+  console.log('  • Novelty Mode (Anti-Meta suggestions)');
+  console.log('  • Commander Spellbook combo detection');
+  console.log('  • EDHREC popularity scoring');
+  console.log('  • Card hover previews (Moxfield-style)');
+  console.log('  • Shopping links (TCGplayer, Card Kingdom)');
   console.log('  • Deck comparison');
   console.log('  • Import from Moxfield, Archidekt, TappedOut');
   console.log('  • Analysis history');
