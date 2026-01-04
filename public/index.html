@@ -431,7 +431,9 @@
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab('analyze')">Analyze Deck</button>
+      <button class="tab" onclick="switchTab('build')">Build Me a Deck</button>
       <button class="tab" onclick="switchTab('dropin')">Drop In</button>
+      <button class="tab" onclick="switchTab('findcard')">Find Card</button>
       <button class="tab" onclick="switchTab('compare')">Compare Decks</button>
       <button class="tab" onclick="switchTab('import')">Import from URL</button>
       <button class="tab" onclick="switchTab('history')">History</button>
@@ -493,6 +495,57 @@
       <div class="card results" id="analyze-results"></div>
     </div>
 
+    <!-- Build Me a Deck Tab -->
+    <div id="build-tab" class="tab-content">
+      <div class="card">
+        <h3 style="margin-bottom: 15px;">🏗️ Build Me a Deck</h3>
+        <p style="color: #999; margin-bottom: 20px;">
+          Enter a commander and let AI build you a complete 99-card deck with synergies, combos, and your preferred level of spice!
+        </p>
+
+        <div class="form-group">
+          <label for="build-commander">Commander Name (required)</label>
+          <input type="text" id="build-commander" placeholder="e.g., Meren of Clan Nel Toth">
+        </div>
+
+        <div class="form-group">
+          <label for="build-novelty">
+            Novelty Level: <span id="build-novelty-value">50</span>%
+            <span style="color: #999; font-size: 0.9em; font-weight: normal;">
+              (0 = Competitive staples, 100 = Maximum jank)
+            </span>
+          </label>
+          <input type="range" id="build-novelty" min="0" max="100" value="50"
+                 oninput="document.getElementById('build-novelty-value').textContent = this.value"
+                 style="width: 100%; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; color: #999; font-size: 0.85em; margin-top: 5px;">
+            <span>Meta/cEDH</span>
+            <span>Balanced</span>
+            <span>Janky/Fun</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="build-model">Model</label>
+          <select id="build-model">
+            <option value="sonnet">Claude Sonnet 4.5 (Faster)</option>
+            <option value="opus">Claude Opus 4.5 (More creative)</option>
+          </select>
+        </div>
+
+        <button onclick="buildDeck()">Build Deck</button>
+      </div>
+
+      <div class="error" id="build-error"></div>
+
+      <div class="loading" id="build-loading">
+        <div class="spinner"></div>
+        <p>Building your deck... This may take 60-90 seconds</p>
+      </div>
+
+      <div class="card results" id="build-results"></div>
+    </div>
+
     <!-- Drop In Tab -->
     <div id="dropin-tab" class="tab-content">
       <div class="card">
@@ -543,6 +596,32 @@
       </div>
 
       <div class="card results" id="dropin-results"></div>
+    </div>
+
+    <!-- Find Card Tab -->
+    <div id="findcard-tab" class="tab-content">
+      <div class="card">
+        <h3 style="margin-bottom: 15px;">🔍 Find Card for Deck</h3>
+        <p style="color: #999; margin-bottom: 20px;">
+          Just opened a pack or pulled a card? Enter its name to see which of your saved decks would benefit most from adding it!
+        </p>
+
+        <div class="form-group">
+          <label for="findcard-name">Card Name</label>
+          <input type="text" id="findcard-name" placeholder="e.g., Sylvan Safekeeper">
+        </div>
+
+        <button onclick="findCardForDeck()">Find Best Deck</button>
+      </div>
+
+      <div class="error" id="findcard-error"></div>
+
+      <div class="loading" id="findcard-loading">
+        <div class="spinner"></div>
+        <p>Analyzing your deck history...</p>
+      </div>
+
+      <div class="card results" id="findcard-results"></div>
     </div>
 
     <!-- Compare Tab -->
