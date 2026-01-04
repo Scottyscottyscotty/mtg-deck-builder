@@ -446,13 +446,13 @@
         </div>
 
         <div class="form-group">
-          <label for="commander-name">Commander (optional - enables EDHREC features)</label>
+          <label for="commander-name">Commander (optional - separate from deck, enables EDHREC features)</label>
           <input type="text" id="commander-name" placeholder="e.g., Atraxa, Praetors' Voice">
         </div>
 
         <div class="form-group">
-          <label for="deck-list">Deck List</label>
-          <textarea id="deck-list" placeholder="1 Sol Ring&#10;3 Swamp&#10;4 Lightning Bolt&#10;..."></textarea>
+          <label for="deck-list">Deck List (99 cards for Commander, don't include commander card)</label>
+          <textarea id="deck-list" placeholder="1 Sol Ring&#10;1 Command Tower&#10;1 Arcane Signet&#10;..."></textarea>
         </div>
 
         <div class="form-group">
@@ -496,23 +496,31 @@
     <!-- Drop In Tab -->
     <div id="dropin-tab" class="tab-content">
       <div class="card">
-        <h3 style="margin-bottom: 20px;">Test Card Additions</h3>
-        <p style="color: #999; margin-bottom: 20px;">
-          Add cards to your existing deck and see how it performs. Get recommendations for what to cut to make room!
-        </p>
-
-        <div class="form-group">
-          <label for="dropin-current">Current Deck</label>
-          <textarea id="dropin-current" placeholder="1 Sol Ring&#10;1 Command Tower&#10;..."></textarea>
+        <h3 style="margin-bottom: 15px;">🔬 Test Card Additions ("Drop In")</h3>
+        <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 3px solid #667eea;">
+          <p style="margin: 0 0 10px 0; font-weight: 600; color: #667eea;">How this works:</p>
+          <ul style="margin: 0; padding-left: 20px; color: #999; line-height: 1.6;">
+            <li>Enter your <strong>current 99-card deck</strong> below (commander goes in separate field)</li>
+            <li>Add the cards you're considering adding</li>
+            <li>Get AI recommendations for what to cut to make room</li>
+            <li>See how the deck performs <strong>WITH</strong> the new additions included</li>
+          </ul>
         </div>
 
         <div class="form-group">
-          <label for="dropin-additions">Cards to Add</label>
-          <textarea id="dropin-additions" placeholder="1 Rhystic Study&#10;1 Smothering Tithe&#10;..." style="min-height: 150px;"></textarea>
+          <label for="dropin-current">
+            Current Deck (99 cards - don't include commander)
+          </label>
+          <textarea id="dropin-current" placeholder="1 Sol Ring&#10;1 Command Tower&#10;1 Arcane Signet&#10;..."></textarea>
         </div>
 
         <div class="form-group">
-          <label for="dropin-commander">Commander (optional)</label>
+          <label for="dropin-additions">Cards You Want to Add</label>
+          <textarea id="dropin-additions" placeholder="1 Rhystic Study&#10;1 Smothering Tithe&#10;1 Cyclonic Rift&#10;..." style="min-height: 150px;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="dropin-commander">Commander (separate from deck)</label>
           <input type="text" id="dropin-commander" placeholder="e.g., Atraxa, Praetors' Voice">
         </div>
 

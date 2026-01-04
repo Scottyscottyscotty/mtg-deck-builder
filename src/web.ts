@@ -217,6 +217,7 @@ app.post('/api/dropin', async (req, res) => {
       const cutResponse = await anthropic.messages.create({
         model: modelId,
         max_tokens: 2048,
+        temperature: 0, // Prevent hallucinations
         messages: [{ role: 'user', content: cutPrompt }],
       });
 

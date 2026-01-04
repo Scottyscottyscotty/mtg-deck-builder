@@ -83,6 +83,7 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
   const response = await anthropic.messages.create({
     model: modelId,
     max_tokens: 4096,
+    temperature: 0, // Prevent hallucinations - must suggest only real cards
     messages: [
       {
         role: 'user',

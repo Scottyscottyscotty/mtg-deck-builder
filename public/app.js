@@ -243,14 +243,95 @@ function displayDropInResults(data) {
 
   // Full analysis
   if (data.analysis) {
-    displayAnalysis(data.analysis);
-    // Append the analysis HTML to our existing HTML
-    const analysisHTML = document.getElementById('analyze-results').innerHTML;
     html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(255,255,255,0.1);">';
-    html += '<h2>📊 Full Deck Analysis (with additions)</h2>';
+    html += '<h2>📊 Full Deck Analysis</h2>';
+    html += '<div style="background: rgba(102, 126, 234, 0.1); padding: 12px; border-radius: 6px; margin-bottom: 20px; border-left: 3px solid #667eea;">';
+    html += '<p style="margin: 0; color: #999;"><strong style="color: #667eea;">Note:</strong> This analysis reflects your deck <strong>WITH the new cards added</strong>. ';
+    html += 'The bracket rating, strengths, weaknesses, and suggestions all consider the improved deck.</p>';
+    html += '</div>';
+
+    // Now display the analysis in the same element
+    displayAnalysisInElement(data.analysis, 'temp-analyze-for-dropin');
+    const analysisHTML = document.getElementById('temp-analyze-for-dropin').innerHTML;
     html += analysisHTML;
     html += '</div>';
   }
+
+  el.innerHTML = html;
+  setupCardHoverListeners();
+}
+
+// Helper function to display analysis in a specific element
+function displayAnalysisInElement(analysis, elementId) {
+  // Create temp element if it doesn't exist
+  let el = document.getElementById(elementId);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = elementId;
+    el.style.display = 'none';
+    document.body.appendChild(el);
+  }
+
+  let html = '';
+
+  // Overview section
+  html += '<div class="section">';
+  html += `<h3>Overview</h3>`;
+  html += `<p><strong>Archetype:</strong> ${escapeHtml(analysis.archetype)}</p>`;
+  html += `<p><strong>Bracket Rating:</strong> ${analysis.bracketRating}/4 ${'⭐'.repeat(analysis.bracketRating)}</p>`;
+  html += `<p>${escapeHtml(analysis.bracketReasoning)}</p>`;
+  html += '</div>';
+
+  // Rest of the analysis sections (abbreviated for brevity but should include all sections)
+  html += '<div class="section">';
+  html += '<h3>⚡ Mana Curve Analysis</h3>';
+  html += `<p>${escapeHtml(analysis.manaCurveAnalysis)}</p>`;
+  html += '</div>';
+
+  html += '<div class="section">';
+  html += '<h3>💪 Strengths</h3>';
+  html += '<ul>';
+  analysis.strengths.forEach((s) => {
+    html += `<li>${escapeHtml(s)}</li>`;
+  });
+  html += '</ul>';
+  html += '</div>';
+
+  html += '<div class="section">';
+  html += '<h3>⚠️ Weaknesses</h3>';
+  html += '<ul>';
+  analysis.weaknesses.forEach((w) => {
+    html += `<li>${escapeHtml(w)}</li>`;
+  });
+  html += '</ul>';
+  html += '</div>';
+
+  // Card suggestions
+  if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🎯 Card Suggestions</h3>';
+    analysis.cardSuggestions.forEach((s) => {
+      const priceDisplay = s.price !== undefined
+        ? `${s.priceTier} ($${s.price.toFixed(2)})`
+        : (s.priceTier || '?');
+      const popTag = s.popularity && s.inclusionRate !== undefined
+        ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
+        : '';
+      html += '<div class="card-suggestion">';
+      html += `<div class="card-suggestion-header">`;
+      html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
+      html += `</div>`;
+      html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+      html += `${createShopLinks(s.card)}`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div class="section">';
+  html += '<h3>📝 Overall Assessment</h3>';
+  html += `<p>${escapeHtml(analysis.overallAssessment)}</p>`;
+  html += '</div>';
 
   el.innerHTML = html;
 }

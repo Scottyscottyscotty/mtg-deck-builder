@@ -99,6 +99,7 @@ export async function enhancedAnalyzeDeck(
   const response = await anthropic.messages.create({
     model: modelId,
     max_tokens: 4096,
+    temperature: 0, // Prevent hallucinations - must suggest only real cards
     messages: [{ role: 'user', content: prompt }],
   });
 
