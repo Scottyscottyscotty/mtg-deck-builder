@@ -74,7 +74,12 @@ export async function enhancedAnalyzeDeck(
     }
   }
 
-  // Step 3: Build enhanced prompt for Claude
+  // Step 3: Calculate deck color identity (CRITICAL for suggestions)
+  const deckColorIdentity = calculateColorIdentity(cards);
+  const colorString = deckColorIdentity.length > 0 ? deckColorIdentity.sort().join('') : 'Colorless';
+  console.log(`🎨 Deck Color Identity: ${colorString}\n`);
+
+  // Step 4: Build enhanced prompt for Claude
   const deckList = formatDeckForClaude(cards);
   const prompt = buildEnhancedPrompt({
     deckList,
@@ -85,9 +90,10 @@ export async function enhancedAnalyzeDeck(
     overplayedCards,
     hiddenGems,
     comboAnalysis,
+    colorIdentity: deckColorIdentity,
   });
 
-  // Step 4: Call Claude
+  // Step 5: Call Claude
   console.log('🧠 Running AI analysis...\n');
 
   const response = await anthropic.messages.create({
@@ -108,7 +114,7 @@ export async function enhancedAnalyzeDeck(
 
   const analysis: DeckAnalysis = JSON.parse(analysisText);
 
-  // Step 5: Enrich card suggestions with pricing
+  // Step 6: Enrich card suggestions with pricing
   console.log('💰 Fetching prices for suggestions...');
   const cardNames = analysis.cardSuggestions.map(s => s.card);
   const priceMap = await getCardPrices(cardNames);
@@ -154,7 +160,7 @@ export async function enhancedAnalyzeDeck(
 
   console.log('✅ Pricing and popularity data added\n');
 
-  // Step 6: Add combo data
+  // Step 7: Add combo data
   if (comboAnalysis) {
     analysis.spellbookCombos = comboAnalysis.completeCombos.map(combo => ({
       cards: combo.cards,
@@ -169,7 +175,7 @@ export async function enhancedAnalyzeDeck(
     }));
   }
 
-  // Step 7: Add deck completeness info
+  // Step 8: Add deck completeness info
   if (isPartialDeck) {
     const targetSize = commander ? 99 : 60; // Commander or 60-card format
     analysis.deckCompleteness = {
@@ -194,6 +200,7 @@ function buildEnhancedPrompt(context: {
   overplayedCards: string[];
   hiddenGems: Array<{ name: string; inclusion: number; synergy: number }>;
   comboAnalysis: any;
+  colorIdentity: string[];
 }): string {
   const {
     deckList,
@@ -204,7 +211,13 @@ function buildEnhancedPrompt(context: {
     overplayedCards,
     hiddenGems,
     comboAnalysis,
+    colorIdentity,
   } = context;
+
+  const colorString = colorIdentity.length > 0
+    ? colorIdentity.sort().join('').replace(/W/g, 'White').replace(/U/g, 'Blue').replace(/B/g, 'Black').replace(/R/g, 'Red').replace(/G/g, 'Green')
+    : 'Colorless';
+  const colorSymbols = colorIdentity.length > 0 ? colorIdentity.sort().join('') : 'Colorless';
 
   let prompt = `You are an expert Magic: The Gathering deck analyst with deep knowledge of hidden synergies and underplayed cards.
 
@@ -215,6 +228,20 @@ ${deckList}`;
   if (commander) {
     prompt += `\n\n## Commander\n\n${commander}`;
   }
+
+  // CRITICAL: Color identity constraint
+  prompt += `\n\n## ⚠️ CRITICAL COLOR IDENTITY CONSTRAINT ⚠️\n\n`;
+  prompt += `This deck's color identity is: **${colorSymbols}** (${colorString})\n\n`;
+  prompt += `**ABSOLUTE REQUIREMENT:** ALL card suggestions MUST match this color identity.\n`;
+  prompt += `- A card's color identity includes ALL mana symbols in its mana cost AND rules text.\n`;
+  prompt += `- You CANNOT suggest cards with colors outside of: ${colorSymbols}\n`;
+  if (colorIdentity.length > 0) {
+    prompt += `- Valid color identities: ${colorSymbols} (exact match) or any subset (e.g., ${colorIdentity[0]} only)\n`;
+  } else {
+    prompt += `- This is a COLORLESS deck - suggest only colorless cards and lands\n`;
+  }
+  prompt += `- Double-check EVERY suggestion's color identity before including it\n`;
+  prompt += `- If you're unsure about a card's colors, DO NOT suggest it\n`;
 
   if (isPartialDeck) {
     const targetSize = commander ? 99 : 60;
@@ -341,4 +368,24 @@ function formatDeckForClaude(cards: DeckCard[]): string {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Calculates the color identity of the deck
+ * Color identity = union of all color_identity fields from all cards
+ */
+function calculateColorIdentity(cards: DeckCard[]): string[] {
+  const colors = new Set<string>();
+
+  for (const { card } of cards) {
+    if (card && card.color_identity) {
+      card.color_identity.forEach(color => colors.add(color));
+    }
+  }
+
+  // Return sorted array of color letters: W, U, B, R, G
+  return Array.from(colors).sort((a, b) => {
+    const order = 'WUBRG';
+    return order.indexOf(a) - order.indexOf(b);
+  });
 }

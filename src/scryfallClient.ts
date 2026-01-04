@@ -5,24 +5,68 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 const RATE_LIMIT_DELAY = 100; // ms between requests (Scryfall asks for 50-100ms)
 
 /**
- * Searches for a card by name using Scryfall's fuzzy search
+ * Searches for a card by name using Scryfall's fuzzy search with retry logic
  */
 export async function searchCard(cardName: string): Promise<ScryfallCard | null> {
-  try {
-    const response = await axios.get(`${SCRYFALL_API_BASE}/cards/named`, {
-      params: {
-        fuzzy: cardName,
-      },
-    });
+  const maxRetries = 3;
+  const retryDelay = 200; // ms
 
-    return response.data as ScryfallCard;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-      console.warn(`⚠️  Card not found: "${cardName}"`);
-      return null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Try fuzzy search first
+      const response = await axios.get(`${SCRYFALL_API_BASE}/cards/named`, {
+        params: {
+          fuzzy: cardName,
+        },
+        timeout: 10000,
+      });
+
+      return response.data as ScryfallCard;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        // If 404, try exact match as fallback
+        if (error.response?.status === 404 && attempt === 1) {
+          try {
+            const exactResponse = await axios.get(`${SCRYFALL_API_BASE}/cards/named`, {
+              params: {
+                exact: cardName,
+              },
+              timeout: 10000,
+            });
+            return exactResponse.data as ScryfallCard;
+          } catch (exactError) {
+            // Continue to retry logic
+          }
+        }
+
+        // Network errors or rate limiting - retry
+        if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.response?.status === 429) {
+          if (attempt < maxRetries) {
+            console.warn(`⚠️  Retry ${attempt}/${maxRetries} for "${cardName}" (${error.code || 'rate limit'})`);
+            await sleep(retryDelay * attempt); // Exponential backoff
+            continue;
+          }
+        }
+
+        // Final 404 - card genuinely not found
+        if (error.response?.status === 404) {
+          console.warn(`⚠️  Card not found after ${attempt} attempts: "${cardName}"`);
+          return null;
+        }
+      }
+
+      // Other errors on final attempt
+      if (attempt === maxRetries) {
+        console.error(`❌ Failed to fetch "${cardName}": ${error}`);
+        return null;
+      }
+
+      // Retry for unknown errors
+      await sleep(retryDelay * attempt);
     }
-    throw error;
   }
+
+  return null;
 }
 
 /**

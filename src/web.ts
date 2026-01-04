@@ -142,6 +142,112 @@ app.post('/api/import', async (req, res) => {
   }
 });
 
+// Drop-in analysis endpoint
+app.post('/api/dropin', async (req, res) => {
+  try {
+    const {
+      currentDeck,
+      additions,
+      commander,
+      model = 'sonnet'
+    } = req.body;
+
+    if (!currentDeck || !additions) {
+      return res.status(400).json({ error: 'Both current deck and additions are required' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    // Parse both deck lists
+    const currentCards = parseDeckList(currentDeck);
+    const additionCards = parseDeckList(additions);
+
+    if (currentCards.length === 0) {
+      return res.status(400).json({ error: 'No valid cards found in current deck' });
+    }
+
+    if (additionCards.length === 0) {
+      return res.status(400).json({ error: 'No valid cards found in additions' });
+    }
+
+    // Combine decks
+    const combinedCards = [...currentCards, ...additionCards];
+
+    // Enrich with Scryfall
+    const enrichedCurrent = await enrichDeckWithScryfall(currentCards);
+    const enrichedAdditions = await enrichDeckWithScryfall(additionCards);
+    const enrichedCombined = [...enrichedCurrent, ...enrichedAdditions];
+
+    // Calculate sizes
+    const currentSize = currentCards.reduce((sum, c) => sum + c.quantity, 0);
+    const additionsSize = additionCards.reduce((sum, c) => sum + c.quantity, 0);
+    const combinedSize = combinedCards.reduce((sum, c) => sum + c.quantity, 0);
+    const targetSize = commander ? 99 : 60;
+    const needToCut = Math.max(0, combinedSize - targetSize);
+
+    // Analyze combined deck
+    const analysis = await enhancedAnalyzeDeck(enrichedCombined, apiKey, {
+      model: model as 'sonnet' | 'opus',
+      commander,
+      novelty: 50,
+      enableCombos: true,
+      enablePopularity: true,
+    });
+
+    // Get cut recommendations from Claude if over limit
+    let cutRecommendations: Array<{ card: string; reasoning: string }> = [];
+
+    if (needToCut > 0) {
+      const cutPrompt = buildCutRecommendationPrompt({
+        currentDeck: enrichedCurrent.map(c => c.name),
+        additions: enrichedAdditions.map(c => c.name),
+        needToCut,
+        commander
+      });
+
+      const Anthropic = (await import('@anthropic-ai/sdk')).default;
+      const anthropic = new Anthropic({ apiKey });
+      const modelId = model === 'opus'
+        ? 'claude-opus-4-5-20251101'
+        : 'claude-sonnet-4-5-20250929';
+
+      const cutResponse = await anthropic.messages.create({
+        model: modelId,
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: cutPrompt }],
+      });
+
+      const cutContent = cutResponse.content[0];
+      if (cutContent.type === 'text') {
+        let cutText = cutContent.text.trim();
+        if (cutText.startsWith('```')) {
+          cutText = cutText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
+        }
+        const cutData = JSON.parse(cutText);
+        cutRecommendations = cutData.cutRecommendations || [];
+      }
+    }
+
+    res.json({
+      success: true,
+      currentSize,
+      additionsSize,
+      combinedSize,
+      targetSize,
+      needToCut,
+      additions: additionCards.map(c => c.name),
+      cutRecommendations,
+      analysis,
+    });
+  } catch (error: any) {
+    console.error('Drop-in analysis error:', error);
+    res.status(500).json({ error: error.message || 'Analysis failed' });
+  }
+});
+
 // History endpoints
 app.get('/api/history', async (req, res) => {
   try {
@@ -163,6 +269,47 @@ app.get('/api/history/:id', async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to load history entry' });
   }
 });
+
+function buildCutRecommendationPrompt(context: {
+  currentDeck: string[];
+  additions: string[];
+  needToCut: number;
+  commander?: string;
+}): string {
+  const { currentDeck, additions, needToCut, commander } = context;
+
+  return `You are an expert Magic: The Gathering deck builder. The player wants to add new cards to their deck but needs to make cuts to stay within the deck size limit.
+
+## Current Deck (${currentDeck.length} cards)
+${currentDeck.join(', ')}
+
+## Cards Being Added (${additions.length} cards)
+${additions.join(', ')}
+
+${commander ? `## Commander\n${commander}\n\n` : ''}
+
+## Your Task
+The player needs to cut **${needToCut} card${needToCut > 1 ? 's' : ''}** to make room for the new additions.
+
+Recommend which cards from the **CURRENT DECK** should be cut. Consider:
+- Cards that are redundant with the new additions
+- Lower power level cards
+- Cards that don't fit the deck's strategy as well
+- Mana curve balance
+- Overall deck synergy
+
+Provide ${needToCut} specific cut recommendations with reasoning.
+
+## Output Format
+Respond with ONLY valid JSON (no markdown, no code blocks):
+
+{
+  "cutRecommendations": [
+    {"card": "Card Name from current deck", "reasoning": "why to cut this card"},
+    ...
+  ]
+}`;
+}
 
 app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════════════');

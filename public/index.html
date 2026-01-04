@@ -206,13 +206,94 @@
 
     .results {
       display: none;
-      white-space: pre-wrap;
-      font-family: monospace;
-      line-height: 1.6;
+      line-height: 1.8;
     }
 
     .results.active {
       display: block;
+    }
+
+    .results h2 {
+      font-size: 2em;
+      margin: 0 0 30px 0;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .results h3 {
+      font-size: 1.4em;
+      margin: 25px 0 15px 0;
+      color: #667eea;
+      font-weight: 600;
+    }
+
+    .results h4 {
+      font-size: 1.1em;
+      margin: 20px 0 10px 0;
+      color: #999;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .results .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid #667eea;
+      border-radius: 4px;
+    }
+
+    .results .warning-section {
+      background: rgba(255, 159, 67, 0.1);
+      border-left-color: #ff9f43;
+    }
+
+    .results .combo-section {
+      background: rgba(102, 126, 234, 0.08);
+      border-left-color: #667eea;
+    }
+
+    .results ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .results li {
+      margin: 10px 0;
+      padding-left: 25px;
+      position: relative;
+    }
+
+    .results li:before {
+      content: '▸';
+      position: absolute;
+      left: 5px;
+      color: #667eea;
+    }
+
+    .results .card-suggestion {
+      margin: 15px 0;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      border-left: 3px solid #764ba2;
+    }
+
+    .results .card-suggestion-header {
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 1.05em;
+    }
+
+    .results .card-suggestion-reason {
+      color: #bbb;
+      margin: 5px 0;
+      padding-left: 15px;
     }
 
     .error {
@@ -350,6 +431,7 @@
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab('analyze')">Analyze Deck</button>
+      <button class="tab" onclick="switchTab('dropin')">Drop In</button>
       <button class="tab" onclick="switchTab('compare')">Compare Decks</button>
       <button class="tab" onclick="switchTab('import')">Import from URL</button>
       <button class="tab" onclick="switchTab('history')">History</button>
@@ -409,6 +491,50 @@
       </div>
 
       <div class="card results" id="analyze-results"></div>
+    </div>
+
+    <!-- Drop In Tab -->
+    <div id="dropin-tab" class="tab-content">
+      <div class="card">
+        <h3 style="margin-bottom: 20px;">Test Card Additions</h3>
+        <p style="color: #999; margin-bottom: 20px;">
+          Add cards to your existing deck and see how it performs. Get recommendations for what to cut to make room!
+        </p>
+
+        <div class="form-group">
+          <label for="dropin-current">Current Deck</label>
+          <textarea id="dropin-current" placeholder="1 Sol Ring&#10;1 Command Tower&#10;..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="dropin-additions">Cards to Add</label>
+          <textarea id="dropin-additions" placeholder="1 Rhystic Study&#10;1 Smothering Tithe&#10;..." style="min-height: 150px;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="dropin-commander">Commander (optional)</label>
+          <input type="text" id="dropin-commander" placeholder="e.g., Atraxa, Praetors' Voice">
+        </div>
+
+        <div class="form-group">
+          <label for="dropin-model">Model</label>
+          <select id="dropin-model">
+            <option value="sonnet">Claude Sonnet 4.5</option>
+            <option value="opus">Claude Opus 4.5</option>
+          </select>
+        </div>
+
+        <button onclick="dropInAnalysis()">Analyze with Additions</button>
+      </div>
+
+      <div class="error" id="dropin-error"></div>
+
+      <div class="loading" id="dropin-loading">
+        <div class="spinner"></div>
+        <p>Analyzing deck with additions...</p>
+      </div>
+
+      <div class="card results" id="dropin-results"></div>
     </div>
 
     <!-- Compare Tab -->

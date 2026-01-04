@@ -145,6 +145,116 @@ async function importDeck() {
   }
 }
 
+// Drop-in analysis
+async function dropInAnalysis() {
+  const currentDeck = document.getElementById('dropin-current').value.trim();
+  const additions = document.getElementById('dropin-additions').value.trim();
+  const commander = document.getElementById('dropin-commander').value.trim();
+  const model = document.getElementById('dropin-model').value;
+
+  if (!currentDeck) {
+    showError('dropin-error', 'Please enter your current deck');
+    return;
+  }
+
+  if (!additions) {
+    showError('dropin-error', 'Please enter cards to add');
+    return;
+  }
+
+  hideError('dropin-error');
+  hideResults('dropin-results');
+  showLoading('dropin-loading');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/dropin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentDeck,
+        additions,
+        commander: commander || undefined,
+        model
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Analysis failed');
+    }
+
+    displayDropInResults(data);
+    showResults('dropin-results');
+  } catch (error) {
+    showError('dropin-error', error.message);
+  } finally {
+    hideLoading('dropin-loading');
+  }
+}
+
+// Display drop-in results
+function displayDropInResults(data) {
+  const el = document.getElementById('dropin-results');
+
+  let html = '<h2>📥 Drop-In Analysis Results</h2>';
+
+  // Summary
+  html += '<div class="section warning-section">';
+  html += '<h3>📊 Summary</h3>';
+  html += `<p><strong>Current Deck:</strong> ${data.currentSize} cards</p>`;
+  html += `<p><strong>Cards to Add:</strong> ${data.additionsSize} cards</p>`;
+  html += `<p><strong>Combined Total:</strong> ${data.combinedSize} cards</p>`;
+  if (data.targetSize) {
+    const overage = data.combinedSize - data.targetSize;
+    if (overage > 0) {
+      html += `<p><strong style="color: #ff9f43;">⚠️ ${overage} cards over limit</strong> - You need to cut ${overage} card${overage > 1 ? 's' : ''}</p>`;
+    }
+  }
+  html += '</div>';
+
+  // New additions
+  if (data.additions && data.additions.length > 0) {
+    html += '<div class="section combo-section">';
+    html += '<h3>🆕 Cards You\'re Adding</h3>';
+    html += '<ul>';
+    data.additions.forEach(card => {
+      html += `<li>${escapeHtml(card)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Cut recommendations
+  if (data.cutRecommendations && data.cutRecommendations.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>✂️ Recommended Cuts</h3>';
+    html += '<p style="color: #999; margin-bottom: 15px;">Consider cutting these cards to make room for your additions:</p>';
+
+    data.cutRecommendations.forEach((cut) => {
+      html += '<div class="card-suggestion">';
+      html += `<div class="card-suggestion-header">${escapeHtml(cut.card)}</div>`;
+      html += `<div class="card-suggestion-reason">${escapeHtml(cut.reasoning)}</div>`;
+      html += '</div>';
+    });
+
+    html += '</div>';
+  }
+
+  // Full analysis
+  if (data.analysis) {
+    displayAnalysis(data.analysis);
+    // Append the analysis HTML to our existing HTML
+    const analysisHTML = document.getElementById('analyze-results').innerHTML;
+    html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(255,255,255,0.1);">';
+    html += '<h2>📊 Full Deck Analysis (with additions)</h2>';
+    html += analysisHTML;
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
 // Load history
 async function loadHistory() {
   const listEl = document.getElementById('history-list');
@@ -209,95 +319,143 @@ async function loadHistoryEntry(id) {
 function displayAnalysis(analysis) {
   const el = document.getElementById('analyze-results');
 
-  let html = '<h2>Analysis Results</h2>\n\n';
-  html += `<strong>Archetype:</strong> ${analysis.archetype}\n\n`;
-  html += `<strong>Bracket Rating:</strong> ${analysis.bracketRating}/4 ${'⭐'.repeat(analysis.bracketRating)}\n`;
-  html += `${analysis.bracketReasoning}\n\n`;
+  let html = '<h2>📊 Deck Analysis Results</h2>';
 
-  // Deck completeness info
+  // Overview section
+  html += '<div class="section">';
+  html += `<h3>Overview</h3>`;
+  html += `<p><strong>Archetype:</strong> ${escapeHtml(analysis.archetype)}</p>`;
+  html += `<p><strong>Bracket Rating:</strong> ${analysis.bracketRating}/4 ${'⭐'.repeat(analysis.bracketRating)}</p>`;
+  html += `<p>${escapeHtml(analysis.bracketReasoning)}</p>`;
+  html += '</div>';
+
+  // Deck completeness warning
   if (analysis.deckCompleteness && analysis.deckCompleteness.isPartial) {
     const dc = analysis.deckCompleteness;
-    html += `<strong style="color: #ff9f43;">⚠️ Partial Deck Detected:</strong>\n`;
-    html += `Currently ${dc.currentSize} cards out of ${dc.targetSize} needed.\n`;
-    html += `Suggestions below will help complete your deck!\n\n`;
+    html += '<div class="section warning-section">';
+    html += `<h3>⚠️ Partial Deck Detected</h3>`;
+    html += `<p>Currently ${dc.currentSize} cards out of ${dc.targetSize} needed.</p>`;
+    html += `<p>Suggestions below will help complete your deck!</p>`;
+    html += '</div>';
   }
 
-  html += '<strong>Mana Curve Analysis:</strong>\n';
-  html += `${analysis.manaCurveAnalysis}\n\n`;
+  // Mana curve
+  html += '<div class="section">';
+  html += '<h3>⚡ Mana Curve Analysis</h3>';
+  html += `<p>${escapeHtml(analysis.manaCurveAnalysis)}</p>`;
+  html += '</div>';
 
-  html += '<strong>Strengths:</strong>\n';
-  analysis.strengths.forEach((s, i) => {
-    html += `${i + 1}. ${s}\n`;
+  // Strengths
+  html += '<div class="section">';
+  html += '<h3>💪 Strengths</h3>';
+  html += '<ul>';
+  analysis.strengths.forEach((s) => {
+    html += `<li>${escapeHtml(s)}</li>`;
   });
-  html += '\n';
+  html += '</ul>';
+  html += '</div>';
 
-  html += '<strong>Weaknesses:</strong>\n';
-  analysis.weaknesses.forEach((w, i) => {
-    html += `${i + 1}. ${w}\n`;
+  // Weaknesses
+  html += '<div class="section">';
+  html += '<h3>⚠️ Weaknesses</h3>';
+  html += '<ul>';
+  analysis.weaknesses.forEach((w) => {
+    html += `<li>${escapeHtml(w)}</li>`;
   });
-  html += '\n';
+  html += '</ul>';
+  html += '</div>';
 
   // Commander Spellbook Combos
   if (analysis.spellbookCombos && analysis.spellbookCombos.length > 0) {
-    html += '<strong>🔮 Commander Spellbook Combos (In Your Deck):</strong>\n';
-    analysis.spellbookCombos.forEach((combo, i) => {
-      html += `${i + 1}. ${wrapCardNames(combo.cards.join(' + '))}\n`;
-      html += `   → Result: ${combo.result}\n`;
+    html += '<div class="section combo-section">';
+    html += '<h3>🔮 Commander Spellbook Combos</h3>';
+    html += '<ul>';
+    analysis.spellbookCombos.forEach((combo) => {
+      html += `<li><strong>${wrapCardNames(combo.cards.join(' + '))}</strong><br>`;
+      html += `→ Result: ${escapeHtml(combo.result)}`;
       if (combo.steps) {
-        html += `   → Steps: ${combo.steps}\n`;
+        html += `<br>→ Steps: ${escapeHtml(combo.steps)}`;
       }
-      html += '\n';
+      html += '</li>';
     });
+    html += '</ul>';
+    html += '</div>';
   }
 
   // Near-miss combos
   if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
-    html += '<strong>🎯 Near-Miss Combos (Add 1-2 Cards):</strong>\n';
-    analysis.nearMissCombos.slice(0, 5).forEach((nearMiss, i) => {
-      html += `${i + 1}. Missing: ${wrapCardNames(nearMiss.missingCards.join(', '))}\n`;
-      html += `   → Result: ${nearMiss.result}\n`;
-      html += `   → You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}\n\n`;
+    html += '<div class="section combo-section">';
+    html += '<h3>🎯 Near-Miss Combos</h3>';
+    html += '<p style="color: #999; margin-bottom: 15px;">Add 1-2 cards to unlock these combos:</p>';
+    html += '<ul>';
+    analysis.nearMissCombos.slice(0, 5).forEach((nearMiss) => {
+      html += `<li><strong>Missing:</strong> ${wrapCardNames(nearMiss.missingCards.join(', '))}<br>`;
+      html += `→ Result: ${escapeHtml(nearMiss.result)}<br>`;
+      html += `→ You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}`;
+      html += '</li>';
     });
+    html += '</ul>';
+    html += '</div>';
   }
 
-  if (analysis.existingCombos.length > 0) {
-    html += '<strong>Existing Combos:</strong>\n';
-    analysis.existingCombos.forEach((c, i) => {
-      html += `${i + 1}. ${c}\n`;
+  // Existing combos (from Claude analysis)
+  if (analysis.existingCombos && analysis.existingCombos.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🎴 Existing Combos & Synergies</h3>';
+    html += '<ul>';
+    analysis.existingCombos.forEach((c) => {
+      html += `<li>${escapeHtml(c)}</li>`;
     });
-    html += '\n';
+    html += '</ul>';
+    html += '</div>';
   }
 
-  if (analysis.potentialCombos.length > 0) {
-    html += '<strong>Potential Combos:</strong>\n';
-    analysis.potentialCombos.forEach((c, i) => {
-      html += `${i + 1}. ${c}\n`;
+  // Potential combos
+  if (analysis.potentialCombos && analysis.potentialCombos.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>💡 Potential Combo Lines</h3>';
+    html += '<ul>';
+    analysis.potentialCombos.forEach((c) => {
+      html += `<li>${escapeHtml(c)}</li>`;
     });
-    html += '\n';
+    html += '</ul>';
+    html += '</div>';
   }
 
-  if (analysis.cardSuggestions.length > 0) {
-    html += '<strong>Card Suggestions:</strong>\n';
-    analysis.cardSuggestions.forEach((s, i) => {
+  // Card suggestions
+  if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🎯 Card Suggestions</h3>';
+
+    analysis.cardSuggestions.forEach((s) => {
       const priceDisplay = s.price !== undefined
         ? `${s.priceTier} ($${s.price.toFixed(2)})`
         : (s.priceTier || '?');
 
       // Popularity tag
       const popTag = s.popularity && s.inclusionRate !== undefined
-        ? ` [${s.popularity} ${s.inclusionRate.toFixed(0)}%]`
+        ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
         : '';
 
-      html += `${i + 1}. ${wrapCardName(s.card)} — ${priceDisplay}${popTag}\n`;
-      html += `   → ${s.reasoning}\n`;
-      html += `   ${createShopLinks(s.card)}\n\n`;
+      html += '<div class="card-suggestion">';
+      html += `<div class="card-suggestion-header">`;
+      html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
+      html += `</div>`;
+      html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+      html += `${createShopLinks(s.card)}`;
+      html += '</div>';
     });
+
+    html += '</div>';
   }
 
-  html += '<strong>Overall Assessment:</strong>\n';
-  html += `${analysis.overallAssessment}\n`;
+  // Overall assessment
+  html += '<div class="section">';
+  html += '<h3>📝 Overall Assessment</h3>';
+  html += `<p>${escapeHtml(analysis.overallAssessment)}</p>`;
+  html += '</div>';
 
-  el.innerHTML = html.replace(/\n/g, '<br>');
+  el.innerHTML = html;
 
   // Setup card hover listeners
   setupCardHoverListeners();
