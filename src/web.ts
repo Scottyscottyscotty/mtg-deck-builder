@@ -324,6 +324,73 @@ app.post('/api/build-deck', async (req, res) => {
   }
 });
 
+// Complete partial deck endpoint
+app.post('/api/complete-deck', async (req, res) => {
+  try {
+    const { commander, partialDeck, novelty = 50, model = 'sonnet' } = req.body;
+
+    if (!commander) {
+      return res.status(400).json({ error: 'Commander is required' });
+    }
+
+    if (!partialDeck) {
+      return res.status(400).json({ error: 'Partial deck is required' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    // Parse the partial deck
+    const { parseDeckList } = await import('./deckParser.js');
+    const parsedDeck = parseDeckList(partialDeck);
+
+    if (parsedDeck.length >= 99) {
+      return res.status(400).json({ error: 'Your deck already has 99+ cards! Use "Analyze Deck" instead.' });
+    }
+
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const anthropic = new Anthropic({ apiKey });
+    const modelId = model === 'opus'
+      ? 'claude-opus-4-5-20251101'
+      : 'claude-sonnet-4-5-20250929';
+
+    const prompt = buildCompleteDeckPrompt(commander, parsedDeck, novelty);
+
+    console.log(`\n🧩 Completing deck for ${commander} (${parsedDeck.length} cards → 99 cards, novelty: ${novelty}%)...\n`);
+
+    const response = await anthropic.messages.create({
+      model: modelId,
+      max_tokens: 8192,
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    let completionText = content.text.trim();
+    if (completionText.startsWith('```')) {
+      completionText = completionText.replace(/^```(?:json)?\\n/, '').replace(/\\n```$/, '');
+    }
+
+    const completionData = JSON.parse(completionText);
+
+    res.json({
+      success: true,
+      completion: completionData,
+      originalSize: parsedDeck.length,
+      cardsAdded: completionData.suggestedCards?.length || 0,
+    });
+  } catch (error: any) {
+    console.error('Complete deck error:', error);
+    res.status(500).json({ error: error.message || 'Deck completion failed' });
+  }
+});
+
 // Find card for deck endpoint
 app.post('/api/find-card', async (req, res) => {
   try {
@@ -420,6 +487,60 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
     "threats": 20,
     "other": 15
   }
+}
+
+CRITICAL: Suggest only REAL Magic cards. Do not hallucinate cards.`;
+}
+
+function buildCompleteDeckPrompt(commander: string, parsedDeck: Array<{name: string, quantity: number}>, novelty: number): string {
+  const noveltyLevel = novelty >= 75 ? 'MAXIMUM' : novelty >= 50 ? 'BALANCED' : 'META';
+  const currentCards = parsedDeck.map(c => c.name);
+  const cardsNeeded = 99 - parsedDeck.length;
+
+  return `You are an expert Magic: The Gathering deck builder. The user has a partial Commander deck for ${commander} and needs help completing it.
+
+## Commander
+${commander}
+
+## Current Deck (${parsedDeck.length} cards)
+${currentCards.join(', ')}
+
+## Cards Needed
+You need to suggest **${cardsNeeded} cards** to bring this deck to a total of 99 cards.
+
+## Novelty Level: ${noveltyLevel} (${novelty}%)
+
+${novelty >= 75
+  ? '- Focus on unique, underplayed, and creative card choices\n- Avoid mainstream staples unless absolutely critical\n- Look for hidden gems and spicy tech'
+  : novelty >= 50
+  ? '- Balance between proven cards and creative alternatives\n- Include some staples but also interesting choices\n- Prefer cards that fit the strategy well'
+  : '- Use the best cards available regardless of popularity\n- Include format staples and powerful cards\n- Focus on consistency and power level'}
+
+## Your Task
+
+Analyze the existing cards and suggest ${cardsNeeded} cards to complete the deck. Consider:
+1. What the deck is trying to do based on the existing cards
+2. Fill gaps in the mana curve
+3. Ensure adequate lands (if missing), ramp, card draw, removal, and threats
+4. Maintain color identity compatibility with ${commander}
+5. Create synergies with existing cards
+
+## Output Format
+
+Respond with ONLY valid JSON (no markdown, no code blocks):
+
+{
+  "suggestedCards": [
+    {
+      "card": "Card Name",
+      "reasoning": "Why this card fits the deck"
+    },
+    ...
+  ],
+  "strategy": "2-3 sentence explanation of what the deck is trying to do",
+  "missingCategories": ["What the deck was lacking that you filled"],
+  "keyAdditions": ["Most impactful cards you added"],
+  "completedDeckList": ["Full 99 card list including original + suggested cards"]
 }
 
 CRITICAL: Suggest only REAL Magic cards. Do not hallucinate cards.`;

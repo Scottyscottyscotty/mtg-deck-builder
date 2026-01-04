@@ -432,6 +432,7 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTab('analyze')">Analyze Deck</button>
       <button class="tab" onclick="switchTab('build')">Build Me a Deck</button>
+      <button class="tab" onclick="switchTab('complete')">Complete Partial Deck</button>
       <button class="tab" onclick="switchTab('dropin')">Drop In</button>
       <button class="tab" onclick="switchTab('findcard')">Find Card</button>
       <button class="tab" onclick="switchTab('compare')">Compare Decks</button>
@@ -544,6 +545,64 @@
       </div>
 
       <div class="card results" id="build-results"></div>
+    </div>
+
+    <!-- Complete Partial Deck Tab -->
+    <div id="complete-tab" class="tab-content">
+      <div class="card">
+        <h3 style="margin-bottom: 15px;">🧩 Complete Partial Deck</h3>
+        <p style="color: #999; margin-bottom: 20px;">
+          Have a deck you're building but need help finishing it? Enter your partial deck (any number of cards) and get AI suggestions to complete it to 99 cards!
+        </p>
+
+        <div class="form-group">
+          <label for="complete-commander">Commander Name (required)</label>
+          <input type="text" id="complete-commander" placeholder="e.g., Yuriko, the Tiger's Shadow">
+        </div>
+
+        <div class="form-group">
+          <label for="complete-deck">
+            Your Partial Deck (enter any number of cards, up to 98)
+          </label>
+          <textarea id="complete-deck" placeholder="1 Sol Ring&#10;1 Command Tower&#10;1 Arcane Signet&#10;..." style="min-height: 200px;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="complete-novelty">
+            Novelty Level: <span id="complete-novelty-value">50</span>%
+            <span style="color: #999; font-size: 0.9em; font-weight: normal;">
+              (0 = Competitive staples, 100 = Unique tech)
+            </span>
+          </label>
+          <input type="range" id="complete-novelty" min="0" max="100" value="50"
+                 oninput="document.getElementById('complete-novelty-value').textContent = this.value"
+                 style="width: 100%; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; color: #999; font-size: 0.85em; margin-top: 5px;">
+            <span>Meta/cEDH</span>
+            <span>Balanced</span>
+            <span>Spicy/Unique</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="complete-model">Model</label>
+          <select id="complete-model">
+            <option value="sonnet">Claude Sonnet 4.5 (Faster)</option>
+            <option value="opus">Claude Opus 4.5 (More creative)</option>
+          </select>
+        </div>
+
+        <button onclick="completeDeck()">Complete My Deck</button>
+      </div>
+
+      <div class="error" id="complete-error"></div>
+
+      <div class="loading" id="complete-loading">
+        <div class="spinner"></div>
+        <p>Completing your deck... This may take 30-60 seconds</p>
+      </div>
+
+      <div class="card results" id="complete-results"></div>
     </div>
 
     <!-- Drop In Tab -->

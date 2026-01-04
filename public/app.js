@@ -400,6 +400,148 @@ function copyDeckList() {
   }
 }
 
+// Complete partial deck
+async function completeDeck() {
+  const commander = document.getElementById('complete-commander').value.trim();
+  const partialDeck = document.getElementById('complete-deck').value.trim();
+  const novelty = parseInt(document.getElementById('complete-novelty').value);
+  const model = document.getElementById('complete-model').value;
+
+  if (!commander) {
+    showError('complete-error', 'Please enter a commander name');
+    return;
+  }
+
+  if (!partialDeck) {
+    showError('complete-error', 'Please enter your partial deck');
+    return;
+  }
+
+  hideError('complete-error');
+  hideResults('complete-results');
+  showLoading('complete-loading');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/complete-deck`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commander, partialDeck, novelty, model }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Deck completion failed');
+    }
+
+    displayCompletedDeck(data.completion, commander, data.originalSize, data.cardsAdded);
+    showResults('complete-results');
+  } catch (error) {
+    showError('complete-error', error.message);
+  } finally {
+    hideLoading('complete-loading');
+  }
+}
+
+// Display completed deck
+function displayCompletedDeck(completion, commander, originalSize, cardsAdded) {
+  const el = document.getElementById('complete-results');
+
+  let html = `<h2>🧩 Completed Deck: ${escapeHtml(commander)}</h2>`;
+
+  // Summary
+  html += '<div class="section">';
+  html += '<h3>📊 Summary</h3>';
+  html += `<p><strong>Original deck size:</strong> ${originalSize} cards</p>`;
+  html += `<p><strong>Cards added:</strong> ${cardsAdded} cards</p>`;
+  html += `<p><strong>Total deck:</strong> 99 cards ✓</p>`;
+  html += '</div>';
+
+  // Strategy
+  if (completion.strategy) {
+    html += '<div class="section">';
+    html += '<h3>🎯 Deck Strategy</h3>';
+    html += `<p>${escapeHtml(completion.strategy)}</p>`;
+    html += '</div>';
+  }
+
+  // Missing categories that were filled
+  if (completion.missingCategories && completion.missingCategories.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🔧 Gaps Filled</h3>';
+    html += '<ul>';
+    completion.missingCategories.forEach(category => {
+      html += `<li>${escapeHtml(category)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Key additions
+  if (completion.keyAdditions && completion.keyAdditions.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>⭐ Key Additions</h3>';
+    html += '<ul>';
+    completion.keyAdditions.forEach(card => {
+      html += `<li>${wrapCardName(card)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Suggested cards with reasoning
+  if (completion.suggestedCards && completion.suggestedCards.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>➕ Suggested Cards</h3>';
+    completion.suggestedCards.forEach(suggestion => {
+      html += '<div class="card-suggestion">';
+      html += `<div class="card-suggestion-header">${wrapCardName(suggestion.card)}</div>`;
+      html += `<div class="card-suggestion-reason">${escapeHtml(suggestion.reasoning)}</div>`;
+      html += `${createShopLinks(suggestion.card)}`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Full completed deck list
+  if (completion.completedDeckList && completion.completedDeckList.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>📋 Complete Deck List (99 cards)</h3>';
+    html += '<p style="color: #999; margin-bottom: 10px;">Copy and paste this into your deck builder:</p>';
+
+    html += '<div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px; font-family: monospace; font-size: 14px; max-height: 400px; overflow-y: auto;">';
+    html += '<pre style="margin: 0; white-space: pre-wrap;">';
+    html += `Commander\n1 ${escapeHtml(commander)}\n\n`;
+    html += 'Deck\n';
+    completion.completedDeckList.forEach(card => {
+      html += `1 ${escapeHtml(card)}\n`;
+    });
+    html += '</pre>';
+    html += '</div>';
+
+    html += '<button onclick="copyCompletedDeckList()" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📋 Copy to Clipboard</button>';
+    html += '</div>';
+
+    // Store deck list for copying
+    window.currentCompletedDeckList = `Commander\n1 ${commander}\n\nDeck\n${completion.completedDeckList.map(c => `1 ${c}`).join('\n')}`;
+  }
+
+  el.innerHTML = html;
+  setupCardHoverListeners();
+}
+
+// Copy completed deck list to clipboard
+function copyCompletedDeckList() {
+  if (window.currentCompletedDeckList) {
+    navigator.clipboard.writeText(window.currentCompletedDeckList).then(() => {
+      alert('Completed deck list copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy. Please manually select and copy the deck list.');
+    });
+  }
+}
+
 // Display drop-in results
 function displayDropInResults(data) {
   const el = document.getElementById('dropin-results');
