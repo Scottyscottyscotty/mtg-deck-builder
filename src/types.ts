@@ -43,8 +43,28 @@ export interface DeckAnalysis {
     reasoning: string;
     priceTier?: string;
     price?: number;
+    popularity?: string; // "Staple", "Common", "Spicy"
+    inclusionRate?: number; // 0-100
   }>;
   bracketRating: number;
   bracketReasoning: string;
   overallAssessment: string;
+
+  // New fields for enhanced analysis
+  spellbookCombos?: Array<{
+    cards: string[];
+    result: string;
+    steps: string;
+  }>;
+  nearMissCombos?: Array<{
+    missingCards: string[];
+    cardsYouHave: string[];
+    result: string;
+  }>;
+  deckCompleteness?: {
+    currentSize: number;
+    targetSize: number;
+    isPartial: boolean;
+    missingCategories?: string[];
+  };
 }

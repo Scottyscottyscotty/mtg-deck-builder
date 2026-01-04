@@ -7,11 +7,13 @@ import * as fs from 'fs/promises';
 import { parseDeckList, summarizeDeck } from './deckParser.js';
 import { enrichDeckWithScryfall } from './scryfallClient.js';
 import { analyzeDeck } from './claudeAnalyzer.js';
+import { enhancedAnalyzeDeck } from './enhancedAnalyzer.js';
 import { formatAnalysis } from './formatter.js';
 import { compareDecks, formatComparison } from './deckComparison.js';
 import { exportToMarkdown, exportToJSON } from './exporter.js';
 import { saveToHistory, listHistory, getHistoryEntry } from './history.js';
 import { importDeckFromUrl } from './deckSiteImporter.js';
+import { findDecksForCard, formatMatches } from './cardMatcher.js';
 import { DeckCard } from './types.js';
 
 dotenv.config();
@@ -31,6 +33,10 @@ program
   .option('-k, --api-key <key>', 'Anthropic API key (or set ANTHROPIC_API_KEY env var)')
   .option('-o, --output <file>', 'Export analysis to file (.md or .json)')
   .option('-n, --name <name>', 'Deck name for history')
+  .option('-c, --commander <name>', 'Commander name (enables EDHREC integration)')
+  .option('--novelty <level>', 'Novelty level 0-100 (0=best cards, 100=max novelty)', '50')
+  .option('--no-combos', 'Disable Commander Spellbook combo search')
+  .option('--no-popularity', 'Disable EDHREC popularity scoring')
   .option('--no-history', 'Skip saving to history')
   .action(async (options) => {
     try {
@@ -76,7 +82,24 @@ program
       const apiKey = getApiKey(options);
       const model = validateModel(options.model);
 
-      const analysis = await analyzeDeck(enrichedCards, apiKey, model);
+      const novelty = parseInt(options.novelty, 10);
+      if (isNaN(novelty) || novelty < 0 || novelty > 100) {
+        console.error('❌ Error: Novelty must be a number between 0 and 100');
+        process.exit(1);
+      }
+
+      // Use enhanced analyzer if any advanced options are set
+      const useEnhanced = options.commander || novelty !== 50 || options.combos !== false || options.popularity !== false;
+
+      const analysis = useEnhanced
+        ? await enhancedAnalyzeDeck(enrichedCards, apiKey, {
+            model,
+            novelty,
+            commander: options.commander,
+            enableCombos: options.combos !== false,
+            enablePopularity: options.popularity !== false,
+          })
+        : await analyzeDeck(enrichedCards, apiKey, model);
 
       console.log('');
       console.log(formatAnalysis(analysis));
@@ -195,6 +218,33 @@ program
         });
 
         console.log('Use "mtg-deck-analyzer history --show <id>" to view details\n');
+      }
+    } catch (error: any) {
+      console.error('❌ Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+// Find card command
+program
+  .command('find-card <cardName>')
+  .description('Find which of your decks would benefit from adding a specific card')
+  .action(async (cardName) => {
+    try {
+      const matches = await findDecksForCard(cardName);
+
+      if (matches.length === 0) {
+        console.log(`\nNo suitable decks found for "${cardName}".`);
+        console.log('The card may not match any deck colors, or you may not have any deck history yet.\n');
+        return;
+      }
+
+      console.log(formatMatches(matches));
+
+      // Show top match details
+      if (matches.length > 0 && matches[0].score >= 50) {
+        console.log(`💡 Best match: "${matches[0].deckName}" (ID: ${matches[0].deckId})`);
+        console.log(`   Use "mtg-deck-analyzer history --show ${matches[0].deckId}" to view the deck\n`);
       }
     } catch (error: any) {
       console.error('❌ Error:', error.message);

@@ -12,6 +12,17 @@ export function formatAnalysis(analysis: DeckAnalysis): string {
   lines.push('═══════════════════════════════════════════════════════════════');
   lines.push('');
 
+  // Deck Completeness (if partial)
+  if (analysis.deckCompleteness?.isPartial) {
+    const { currentSize, targetSize } = analysis.deckCompleteness;
+    const missing = targetSize - currentSize;
+    lines.push(`⚠️  PARTIAL DECK: ${currentSize}/${targetSize} cards (need ${missing} more)`);
+    if (analysis.deckCompleteness.missingCategories) {
+      lines.push(`   Missing: ${analysis.deckCompleteness.missingCategories.join(', ')}`);
+    }
+    lines.push('');
+  }
+
   // Archetype
   lines.push(`📊 ARCHETYPE: ${analysis.archetype}`);
   lines.push('');
@@ -64,15 +75,46 @@ export function formatAnalysis(analysis: DeckAnalysis): string {
     lines.push('');
   }
 
+  // Commander Spellbook Combos
+  if (analysis.spellbookCombos && analysis.spellbookCombos.length > 0) {
+    lines.push('✨ COMMANDER SPELLBOOK COMBOS');
+    lines.push('───────────────────────────────────────────────────────────────');
+    analysis.spellbookCombos.forEach((combo, i) => {
+      lines.push(`  ${i + 1}. ${combo.cards.join(' + ')}`);
+      lines.push(`     → ${combo.result}`);
+      if (combo.steps) {
+        lines.push(`     Steps: ${combo.steps}`);
+      }
+      lines.push('');
+    });
+  }
+
+  // Near-Miss Combos
+  if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
+    lines.push('🔮 NEAR-MISS COMBOS (Add 1-2 cards!)');
+    lines.push('───────────────────────────────────────────────────────────────');
+    analysis.nearMissCombos.forEach((combo, i) => {
+      lines.push(`  ${i + 1}. Add: ${combo.missingCards.join(', ')}`);
+      lines.push(`     You have: ${combo.cardsYouHave.join(', ')}`);
+      lines.push(`     → ${combo.result}`);
+      lines.push('');
+    });
+  }
+
   // Card Suggestions
   if (analysis.cardSuggestions.length > 0) {
-    lines.push('🎯 CARD SUGGESTIONS (Sorted by Price)');
+    lines.push('🎯 CARD SUGGESTIONS (Sorted by Novelty & Price)');
     lines.push('───────────────────────────────────────────────────────────────');
     analysis.cardSuggestions.forEach((suggestion, i) => {
       const priceDisplay = suggestion.price !== undefined
         ? `${suggestion.priceTier} ($${suggestion.price.toFixed(2)})`
         : suggestion.priceTier || '?';
-      lines.push(`  ${i + 1}. ${suggestion.card} — ${priceDisplay}`);
+
+      const popularityTag = suggestion.popularity
+        ? ` [${suggestion.popularity}${suggestion.inclusionRate ? ` ${suggestion.inclusionRate.toFixed(0)}%` : ''}]`
+        : '';
+
+      lines.push(`  ${i + 1}. ${suggestion.card} — ${priceDisplay}${popularityTag}`);
       lines.push(`     → ${suggestion.reasoning}`);
       lines.push('');
     });
