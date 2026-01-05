@@ -964,16 +964,33 @@ function displayAnalysis(analysis) {
       html += '<div class="section">';
       html += '<h3>🎯 Recommended Cards</h3>';
 
+      // Filter and Sort controls
+      html += '<div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">';
+
+      // Budget filter
+      html += '<div style="flex: 1; min-width: 200px;">';
+      html += '<label for="budget-filter" style="margin-right: 10px; font-weight: normal; display: inline;">Budget:</label>';
+      html += '<select id="budget-filter" onchange="filterAndSortRecommendations()" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
+      html += '<option value="999999">Any Budget</option>';
+      html += '<option value="5">Under $5</option>';
+      html += '<option value="10">Under $10</option>';
+      html += '<option value="20">Under $20</option>';
+      html += '<option value="50">Under $50</option>';
+      html += '</select>';
+      html += '</div>';
+
       // Sort dropdown
-      html += '<div style="margin-bottom: 20px;">';
-      html += '<label for="sort-recommendations" style="margin-right: 10px; font-weight: normal;">Sort by:</label>';
-      html += '<select id="sort-recommendations" onchange="sortRecommendations(this.value)" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
-      html += '<option value="default">Default (Popularity + Price)</option>';
+      html += '<div style="flex: 1; min-width: 200px;">';
+      html += '<label for="sort-recommendations" style="margin-right: 10px; font-weight: normal; display: inline;">Sort by:</label>';
+      html += '<select id="sort-recommendations" onchange="filterAndSortRecommendations()" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
+      html += '<option value="default">Default</option>';
       html += '<option value="confidence-high">Confidence (High → Low)</option>';
       html += '<option value="confidence-low">Confidence (Low → High)</option>';
       html += '<option value="price-low">Price (Low → High)</option>';
       html += '<option value="price-high">Price (High → Low)</option>';
       html += '</select>';
+      html += '</div>';
+
       html += '</div>';
 
       html += '<div id="recommendations-container">';
@@ -1249,47 +1266,76 @@ function displayComparison(comparison) {
 }
 
 // Sort recommendations
-function sortRecommendations(sortBy) {
+function filterAndSortRecommendations() {
   if (!window.currentRecommendations) return;
 
   const container = document.getElementById('recommendations-container');
   if (!container) return;
 
-  let sorted = [...window.currentRecommendations];
+  // Get filter and sort values
+  const budgetFilter = parseFloat(document.getElementById('budget-filter')?.value || '999999');
+  const sortBy = document.getElementById('sort-recommendations')?.value || 'default';
 
-  // Define sort functions
+  // Start with all recommendations
+  let filtered = [...window.currentRecommendations];
+
+  // Apply budget filter
+  filtered = filtered.filter(s => {
+    // If price is unknown, include it (user can decide)
+    if (s.price === undefined || s.price === null) return true;
+    return s.price <= budgetFilter;
+  });
+
+  // Apply sorting
   const confidenceOrder = { high: 3, medium: 2, low: 1 };
 
   switch (sortBy) {
     case 'confidence-high':
-      sorted.sort((a, b) => {
+      filtered.sort((a, b) => {
         const confA = confidenceOrder[a.confidence || 'medium'];
         const confB = confidenceOrder[b.confidence || 'medium'];
         return confB - confA;
       });
       break;
     case 'confidence-low':
-      sorted.sort((a, b) => {
+      filtered.sort((a, b) => {
         const confA = confidenceOrder[a.confidence || 'medium'];
         const confB = confidenceOrder[b.confidence || 'medium'];
         return confA - confB;
       });
       break;
     case 'price-low':
-      sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+      filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
       break;
     case 'price-high':
-      sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+      filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
       break;
     case 'default':
       // Default sort already applied (popularity + price tier)
-      sorted = [...window.currentRecommendations];
       break;
   }
 
+  // Show filtered count if filtered
+  const totalCount = window.currentRecommendations.length;
+  const filteredCount = filtered.length;
+
   // Re-render recommendations
   let html = '';
-  sorted.forEach((s) => {
+
+  // Show filter info if results are filtered
+  if (filteredCount < totalCount) {
+    html += `<div style="background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; padding: 12px 16px; margin-bottom: 16px; border-radius: 4px;">`;
+    html += `📊 Showing ${filteredCount} of ${totalCount} recommendations based on your budget filter.`;
+    html += `</div>`;
+  }
+
+  if (filtered.length === 0) {
+    html += `<div style="text-align: center; padding: 40px 20px; color: #999;">`;
+    html += `No recommendations match your budget filter. Try increasing your budget or selecting "Any Budget".`;
+    html += `</div>`;
+  }
+
+  filtered.forEach((s) => {
     const priceDisplay = s.price !== undefined
       ? `${s.priceTier} (Est. $${s.price.toFixed(2)})`
       : (s.priceTier || '?');
@@ -1333,6 +1379,11 @@ function sortRecommendations(sortBy) {
 
   container.innerHTML = html;
   setupCardHoverListeners();
+}
+
+// Legacy function for backwards compatibility
+function sortRecommendations(sortBy) {
+  filterAndSortRecommendations();
 }
 
 // Deck Doctor functions
