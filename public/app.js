@@ -948,12 +948,13 @@ function displayAnalysis(analysis) {
 
   el.innerHTML = html;
 
-  // Store deck data for Deck Doctor
+  // Store deck data for Deck Doctor (with full analysis for ground truth)
   const deckListForDoctor = document.getElementById('deck-list').value.trim();
   const commanderForDoctor = document.getElementById('commander-name').value.trim();
   window.currentAnalyzedDeck = {
     deckList: deckListForDoctor,
     commander: commanderForDoctor,
+    analysis: analysis, // Store full analysis including card data
     conversationHistory: []
   };
 
@@ -1163,6 +1164,7 @@ async function submitDeckDoctorQuestion(question) {
       body: JSON.stringify({
         deckList: window.currentAnalyzedDeck.deckList,
         commander: window.currentAnalyzedDeck.commander,
+        analysis: window.currentAnalyzedDeck.analysis, // Send full analysis for context
         question,
         conversationHistory: window.currentAnalyzedDeck.conversationHistory
       }),
@@ -1207,14 +1209,23 @@ function addMessageToConversation(role, content) {
     messageDiv.style.borderLeft = '3px solid #764ba2';
 
     // Convert markdown-style formatting and wrap card names
-    let formattedContent = content;
+    let formattedContent = escapeHtml(content);
 
-    // Wrap card names (look for capitalized words that might be cards)
-    // This is a simple heuristic - won't be perfect but helpful
-    formattedContent = formattedContent.replace(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g, (match) => {
-      // Don't wrap common words
-      const skipWords = ['Commander', 'Deck', 'Doctor', 'Magic', 'The', 'This', 'That', 'These', 'Those', 'You', 'Your', 'Consider', 'However', 'Therefore'];
+    // Only wrap likely card names (2-4 capitalized words, limited to prevent over-matching)
+    // Match patterns like "Sol Ring", "Rhystic Study", "Command Tower", etc.
+    formattedContent = formattedContent.replace(/\b([A-Z][a-z]+(?:'[a-z]+)?(?:\s+[A-Z][a-z]+(?:'[a-z]+)?){0,3})\b/g, (match) => {
+      // Don't wrap common sentence starters and transition words
+      const skipWords = [
+        'Commander', 'Deck', 'Doctor', 'Magic', 'The', 'This', 'That', 'These', 'Those',
+        'You', 'Your', 'Consider', 'However', 'Therefore', 'Additionally', 'First', 'Second',
+        'Third', 'Finally', 'Instead', 'Also', 'While', 'Since', 'Because', 'Although',
+        'Specifically', 'Generally', 'Particularly', 'Here', 'There', 'Some', 'Many',
+        'Most', 'All', 'Each', 'Every', 'Both', 'Either', 'Neither', 'Other', 'Another'
+      ];
       if (skipWords.includes(match)) return match;
+
+      // Don't wrap if it's at the start of a sentence (likely not a card name)
+      // This helps avoid wrapping sentence starters
       return wrapCardName(match);
     });
 

@@ -632,7 +632,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 // Deck Doctor Q&A endpoint
 app.post('/api/deck-doctor', async (req, res) => {
   try {
-    const { deckList, commander, question, conversationHistory = [] } = req.body;
+    const { deckList, commander, analysis, question, conversationHistory = [] } = req.body;
 
     if (!deckList) {
       return res.status(400).json({ error: 'Deck list is required' });
@@ -669,8 +669,8 @@ app.post('/api/deck-doctor', async (req, res) => {
       });
     });
 
-    // Add current question with deck context
-    const prompt = buildDeckDoctorPrompt(parsedDeck, commander, question);
+    // Add current question with deck context (including analysis if available)
+    const prompt = buildDeckDoctorPrompt(parsedDeck, commander, question, analysis);
     messages.push({ role: 'user', content: prompt });
 
     console.log(`\n💬 Deck Doctor: "${question}"\n`);
@@ -697,14 +697,46 @@ app.post('/api/deck-doctor', async (req, res) => {
   }
 });
 
-function buildDeckDoctorPrompt(parsedDeck: Array<{name: string, quantity: number}>, commander: string | undefined, question: string): string {
+function buildDeckDoctorPrompt(
+  parsedDeck: Array<{name: string, quantity: number}>,
+  commander: string | undefined,
+  question: string,
+  analysis?: any
+): string {
   const cardList = parsedDeck.map(c => c.name).join(', ');
+
+  // Build detailed deck breakdown if analysis is available
+  let deckBreakdown = '';
+  if (analysis) {
+    // Count card types from parsed deck
+    const lands = parsedDeck.filter(c => c.name.toLowerCase().includes('land') ||
+      ['Command Tower', 'Sol Ring', 'Arcane Signet'].some(land => c.name === land) === false).length;
+    const totalCards = parsedDeck.reduce((sum, c) => sum + c.quantity, 0);
+
+    deckBreakdown = `
+## Detailed Deck Breakdown
+- **Archetype:** ${analysis.archetype}
+- **Bracket Rating:** ${analysis.bracketRating}/4
+- **Total Cards:** ${totalCards} (${parsedDeck.length} unique)
+- **Approximate Lands:** ~36 (estimate based on Commander conventions)
+
+**Strengths:**
+${analysis.strengths?.map((s: string) => `- ${s}`).join('\n') || 'N/A'}
+
+**Weaknesses:**
+${analysis.weaknesses?.map((w: string) => `- ${w}`).join('\n') || 'N/A'}
+
+${analysis.existingCombos && analysis.existingCombos.length > 0 ? `**Known Combos:**
+${analysis.existingCombos.slice(0, 5).map((c: string) => `- ${c}`).join('\n')}` : ''}
+`;
+  }
 
   return `You are "Deck Doctor", an expert Magic: The Gathering deck analyst. Answer the user's question about their Commander deck with detailed, actionable advice.
 
 ## Deck Context
 ${commander ? `**Commander:** ${commander}\n` : ''}**Deck (${parsedDeck.length} unique cards):**
 ${cardList}
+${deckBreakdown}
 
 ## User's Question
 ${question}
@@ -712,6 +744,8 @@ ${question}
 ## Instructions
 - Give specific, actionable answers based on the cards in this deck
 - Reference specific card names from the deck when relevant
+- Use the deck breakdown above for ground truth facts (archetype, strengths, weaknesses, combos)
+- If asking about numbers (lands, creatures, etc.), make educated guesses based on typical Commander deck composition
 - If asking about combos/synergies, suggest real cards that would work with cards in this deck
 - If the question mentions a specific card, focus your analysis on that card in the context of this deck
 - Be concise but thorough
