@@ -327,13 +327,22 @@ ${deckList}`;
   "existingCombos": ["string", ...],
   "potentialCombos": ["string", ...],
   "cardSuggestions": [
-    {"card": "Card Name", "reasoning": "why it fits"},
+    {
+      "card": "Card Name",
+      "reasoning": "why it fits",
+      "confidence": "high" | "medium" | "low"
+    },
     ...
   ],
   "bracketRating": 1-4,
   "bracketReasoning": "string",
   "overallAssessment": "string"
-}`;
+}
+
+## Confidence Levels for Suggestions
+- **high**: Core staples or obvious fits for the strategy (e.g., Sol Ring, Rhystic Study, cards that directly synergize)
+- **medium**: Strong cards that fit well but aren't essential (e.g., good value cards, solid utility)
+- **low**: Experimental or meta-dependent cards (e.g., tech choices, situational cards, anti-meta picks)`;
 
   return prompt;
 }

@@ -883,11 +883,34 @@ function displayAnalysis(analysis) {
           ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
           : '';
 
+        // Confidence level badge
+        const confidence = s.confidence || 'medium';
+        const confidenceColors = {
+          high: { bg: 'rgba(76, 175, 80, 0.15)', border: '#4caf50', text: '#4caf50' },
+          medium: { bg: 'rgba(255, 193, 7, 0.15)', border: '#ffc107', text: '#ffc107' },
+          low: { bg: 'rgba(255, 152, 0, 0.15)', border: '#ff9800', text: '#ff9800' }
+        };
+        const confidenceColor = confidenceColors[confidence];
+        const confidenceBadge = `<span style="display: inline-block; padding: 2px 8px; margin-left: 8px; background: ${confidenceColor.bg}; border: 1px solid ${confidenceColor.border}; border-radius: 12px; font-size: 0.75em; color: ${confidenceColor.text}; font-weight: 600; text-transform: uppercase;">${confidence}</span>`;
+
+        // Price warning for expensive cards
+        let priceWarning = '';
+        if (s.price && s.price > 50) {
+          priceWarning = `<div style="background: rgba(255, 159, 67, 0.1); border-left: 3px solid #ff9f43; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
+          priceWarning += `⚠️ <strong>Expensive Card Alert:</strong> This card costs over $50. Make sure it's worth the investment for your deck's strategy and budget.`;
+          priceWarning += `</div>`;
+        } else if (s.price && s.price > 20) {
+          priceWarning = `<div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
+          priceWarning += `💰 <strong>Moderate Cost:</strong> This card costs over $20. Consider if it fits your budget before purchasing.`;
+          priceWarning += `</div>`;
+        }
+
         html += '<div class="card-suggestion">';
         html += `<div class="card-suggestion-header">`;
-        html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
+        html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}${confidenceBadge}`;
         html += `</div>`;
         html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+        html += priceWarning;
         html += `${createShopLinks(s.card)}`;
         html += '</div>';
       });
