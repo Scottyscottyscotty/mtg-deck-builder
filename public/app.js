@@ -18,7 +18,98 @@ function switchTab(tabName) {
   if (tabName === 'history') {
     loadHistory();
   }
+
+  // Populate deck dropdowns when switching to tabs that have them
+  if (['analyze', 'complete', 'dropin'].includes(tabName)) {
+    populateDeckDropdowns();
+  }
 }
+
+// Populate deck dropdowns from history
+async function populateDeckDropdowns() {
+  try {
+    const response = await fetch(`${API_BASE}/api/history`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Failed to load history for dropdowns');
+      return;
+    }
+
+    const selectors = [
+      'analyze-deck-selector',
+      'complete-deck-selector',
+      'dropin-deck-selector'
+    ];
+
+    selectors.forEach(selectorId => {
+      const selector = document.getElementById(selectorId);
+      if (!selector) return;
+
+      // Keep first option, clear rest
+      selector.innerHTML = '<option value="">-- Select a saved deck --</option>';
+
+      // Add history entries
+      data.history.forEach(entry => {
+        const option = document.createElement('option');
+        option.value = entry.id;
+        option.textContent = `${entry.deckName || 'Unnamed Deck'} (${entry.archetype}) - ${new Date(entry.timestamp).toLocaleDateString()}`;
+        selector.appendChild(option);
+      });
+    });
+  } catch (error) {
+    console.error('Error loading deck history for dropdowns:', error);
+  }
+}
+
+// Load deck from history into a tab's form
+async function loadDeckFromHistory(tabName, historyId) {
+  if (!historyId) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/history/${historyId}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load deck');
+    }
+
+    const entry = data.entry;
+    const deckList = entry.deck.map(c => `${c.quantity} ${c.name}`).join('\n');
+
+    // Populate fields based on tab
+    if (tabName === 'analyze') {
+      document.getElementById('deck-list').value = deckList;
+      document.getElementById('deck-name').value = entry.deckName || '';
+      // Try to extract commander from analysis if available
+      if (entry.analysis && entry.analysis.commander) {
+        document.getElementById('commander-name').value = entry.analysis.commander;
+      }
+    } else if (tabName === 'complete') {
+      document.getElementById('complete-deck').value = deckList;
+      if (entry.analysis && entry.analysis.commander) {
+        document.getElementById('complete-commander').value = entry.analysis.commander;
+      }
+    } else if (tabName === 'dropin') {
+      document.getElementById('dropin-current').value = deckList;
+      if (entry.analysis && entry.analysis.commander) {
+        document.getElementById('dropin-commander').value = entry.analysis.commander;
+      }
+    }
+
+    // Reset selector to placeholder
+    const selectorId = `${tabName}-deck-selector`;
+    document.getElementById(selectorId).value = '';
+
+  } catch (error) {
+    alert(`Error loading deck: ${error.message}`);
+  }
+}
+
+// Call populateDeckDropdowns on page load
+document.addEventListener('DOMContentLoaded', () => {
+  populateDeckDropdowns();
+});
 
 // Analyze deck
 async function analyzeDeck() {
@@ -873,9 +964,26 @@ function displayAnalysis(analysis) {
       html += '<div class="section">';
       html += '<h3>🎯 Recommended Cards</h3>';
 
+      // Sort dropdown
+      html += '<div style="margin-bottom: 20px;">';
+      html += '<label for="sort-recommendations" style="margin-right: 10px; font-weight: normal;">Sort by:</label>';
+      html += '<select id="sort-recommendations" onchange="sortRecommendations(this.value)" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
+      html += '<option value="default">Default (Popularity + Price)</option>';
+      html += '<option value="confidence-high">Confidence (High → Low)</option>';
+      html += '<option value="confidence-low">Confidence (Low → High)</option>';
+      html += '<option value="price-low">Price (Low → High)</option>';
+      html += '<option value="price-high">Price (High → Low)</option>';
+      html += '</select>';
+      html += '</div>';
+
+      html += '<div id="recommendations-container">';
+
+      // Store original suggestions for sorting
+      window.currentRecommendations = [...analysis.cardSuggestions];
+
       analysis.cardSuggestions.forEach((s) => {
         const priceDisplay = s.price !== undefined
-          ? `${s.priceTier} ($${s.price.toFixed(2)})`
+          ? `${s.priceTier} (Est. $${s.price.toFixed(2)})`
           : (s.priceTier || '?');
 
         // Popularity tag
@@ -883,7 +991,7 @@ function displayAnalysis(analysis) {
           ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
           : '';
 
-        // Confidence level badge
+        // Confidence level badge with tooltip
         const confidence = s.confidence || 'medium';
         const confidenceColors = {
           high: { bg: 'rgba(76, 175, 80, 0.15)', border: '#4caf50', text: '#4caf50' },
@@ -891,7 +999,10 @@ function displayAnalysis(analysis) {
           low: { bg: 'rgba(255, 152, 0, 0.15)', border: '#ff9800', text: '#ff9800' }
         };
         const confidenceColor = confidenceColors[confidence];
-        const confidenceBadge = `<span style="display: inline-block; padding: 2px 8px; margin-left: 8px; background: ${confidenceColor.bg}; border: 1px solid ${confidenceColor.border}; border-radius: 12px; font-size: 0.75em; color: ${confidenceColor.text}; font-weight: 600; text-transform: uppercase;">${confidence}</span>`;
+        const confidenceTooltip = confidence === 'high' ? 'High confidence: Core staple or obvious fit for your strategy' :
+                                  confidence === 'medium' ? 'Medium confidence: Strong card but not essential' :
+                                  'Low confidence: Experimental or situational pick';
+        const confidenceBadge = `<span title="${confidenceTooltip}" style="display: inline-block; padding: 2px 8px; margin-left: 8px; background: ${confidenceColor.bg}; border: 1px solid ${confidenceColor.border}; border-radius: 12px; font-size: 0.75em; color: ${confidenceColor.text}; font-weight: 600; text-transform: uppercase; cursor: help;">${confidence}</span>`;
 
         // Price warning for expensive cards
         let priceWarning = '';
@@ -915,7 +1026,8 @@ function displayAnalysis(analysis) {
         html += '</div>';
       });
 
-      html += '</div>';
+      html += '</div>'; // Close recommendations-container
+      html += '</div>'; // Close section
     }
 
     html += '</div>'; // Close recommendations section
@@ -1119,6 +1231,93 @@ function displayComparison(comparison) {
   }
 
   el.innerHTML = html.replace(/\n/g, '<br>');
+}
+
+// Sort recommendations
+function sortRecommendations(sortBy) {
+  if (!window.currentRecommendations) return;
+
+  const container = document.getElementById('recommendations-container');
+  if (!container) return;
+
+  let sorted = [...window.currentRecommendations];
+
+  // Define sort functions
+  const confidenceOrder = { high: 3, medium: 2, low: 1 };
+
+  switch (sortBy) {
+    case 'confidence-high':
+      sorted.sort((a, b) => {
+        const confA = confidenceOrder[a.confidence || 'medium'];
+        const confB = confidenceOrder[b.confidence || 'medium'];
+        return confB - confA;
+      });
+      break;
+    case 'confidence-low':
+      sorted.sort((a, b) => {
+        const confA = confidenceOrder[a.confidence || 'medium'];
+        const confB = confidenceOrder[b.confidence || 'medium'];
+        return confA - confB;
+      });
+      break;
+    case 'price-low':
+      sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+      break;
+    case 'price-high':
+      sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+      break;
+    case 'default':
+      // Default sort already applied (popularity + price tier)
+      sorted = [...window.currentRecommendations];
+      break;
+  }
+
+  // Re-render recommendations
+  let html = '';
+  sorted.forEach((s) => {
+    const priceDisplay = s.price !== undefined
+      ? `${s.priceTier} (Est. $${s.price.toFixed(2)})`
+      : (s.priceTier || '?');
+
+    const popTag = s.popularity && s.inclusionRate !== undefined
+      ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
+      : '';
+
+    const confidence = s.confidence || 'medium';
+    const confidenceColors = {
+      high: { bg: 'rgba(76, 175, 80, 0.15)', border: '#4caf50', text: '#4caf50' },
+      medium: { bg: 'rgba(255, 193, 7, 0.15)', border: '#ffc107', text: '#ffc107' },
+      low: { bg: 'rgba(255, 152, 0, 0.15)', border: '#ff9800', text: '#ff9800' }
+    };
+    const confidenceColor = confidenceColors[confidence];
+    const confidenceTooltip = confidence === 'high' ? 'High confidence: Core staple or obvious fit for your strategy' :
+                              confidence === 'medium' ? 'Medium confidence: Strong card but not essential' :
+                              'Low confidence: Experimental or situational pick';
+    const confidenceBadge = `<span title="${confidenceTooltip}" style="display: inline-block; padding: 2px 8px; margin-left: 8px; background: ${confidenceColor.bg}; border: 1px solid ${confidenceColor.border}; border-radius: 12px; font-size: 0.75em; color: ${confidenceColor.text}; font-weight: 600; text-transform: uppercase; cursor: help;">${confidence}</span>`;
+
+    let priceWarning = '';
+    if (s.price && s.price > 50) {
+      priceWarning = `<div style="background: rgba(255, 159, 67, 0.1); border-left: 3px solid #ff9f43; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
+      priceWarning += `⚠️ <strong>Expensive Card Alert:</strong> This card costs over $50. Make sure it's worth the investment for your deck's strategy and budget.`;
+      priceWarning += `</div>`;
+    } else if (s.price && s.price > 20) {
+      priceWarning = `<div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
+      priceWarning += `💰 <strong>Moderate Cost:</strong> This card costs over $20. Consider if it fits your budget before purchasing.`;
+      priceWarning += `</div>`;
+    }
+
+    html += '<div class="card-suggestion">';
+    html += `<div class="card-suggestion-header">`;
+    html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}${confidenceBadge}`;
+    html += `</div>`;
+    html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+    html += priceWarning;
+    html += `${createShopLinks(s.card)}`;
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+  setupCardHoverListeners();
 }
 
 // Deck Doctor functions

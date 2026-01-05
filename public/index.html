@@ -472,6 +472,14 @@
         </div>
 
         <div class="form-group">
+          <label for="analyze-deck-selector">Load from History</label>
+          <select id="analyze-deck-selector" onchange="loadDeckFromHistory('analyze', this.value)" style="margin-bottom: 15px;">
+            <option value="">-- Select a saved deck --</option>
+          </select>
+          <p style="color: #999; font-size: 0.9em; margin: -10px 0 10px 0;">Or enter deck list manually below:</p>
+        </div>
+
+        <div class="form-group">
           <label for="deck-list">Deck List (99 cards for Commander, don't include commander card)</label>
           <textarea id="deck-list" placeholder="1 Sol Ring&#10;1 Command Tower&#10;1 Arcane Signet&#10;..."></textarea>
         </div>
@@ -579,6 +587,14 @@
         </div>
 
         <div class="form-group">
+          <label for="complete-deck-selector">Load from History</label>
+          <select id="complete-deck-selector" onchange="loadDeckFromHistory('complete', this.value)" style="margin-bottom: 15px;">
+            <option value="">-- Select a saved deck --</option>
+          </select>
+          <p style="color: #999; font-size: 0.9em; margin: -10px 0 10px 0;">Or enter partial deck manually below:</p>
+        </div>
+
+        <div class="form-group">
           <label for="complete-deck">
             Your Partial Deck (enter any number of cards, up to 98)
           </label>
@@ -635,6 +651,14 @@
             <li>Get AI recommendations for what to cut to make room</li>
             <li>See how the deck performs <strong>WITH</strong> the new additions included</li>
           </ul>
+        </div>
+
+        <div class="form-group">
+          <label for="dropin-deck-selector">Load from History</label>
+          <select id="dropin-deck-selector" onchange="loadDeckFromHistory('dropin', this.value)" style="margin-bottom: 15px;">
+            <option value="">-- Select a saved deck --</option>
+          </select>
+          <p style="color: #999; font-size: 0.9em; margin: -10px 0 10px 0;">Or enter current deck manually below:</p>
         </div>
 
         <div class="form-group">
