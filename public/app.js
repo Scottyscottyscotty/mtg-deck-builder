@@ -1046,15 +1046,30 @@ function displayAnalysis(analysis) {
   html += '<button class="quick-question-btn" onclick="askQuickQuestion(\'What\\\'s my best turn 3 play?\')">⚡ Best T3 play?</button>';
   html += '</div>';
 
-  // Question input
-  html += '<div style="margin-bottom: 20px;">';
-  html += '<input type="text" id="deck-doctor-question" placeholder="Ask anything about your deck..." style="width: calc(100% - 120px); padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px 0 0 8px; color: #e0e0e0; font-size: 14px;">';
-  html += '<button onclick="askDeckDoctor()" style="width: 100px; padding: 12px; background: #667eea; color: white; border: none; border-radius: 0 8px 8px 0; cursor: pointer; font-weight: 600; font-size: 14px;">Ask</button>';
+  // Chat window
+  html += '<div class="chat-window">';
+
+  // Chat header with clear button
+  html += '<div class="chat-header">';
+  html += '<h3>💬 Conversation</h3>';
+  html += '<button class="clear-chat-btn" onclick="clearChatConversation()">Clear</button>';
   html += '</div>';
 
-  // Conversation history
-  html += '<div id="deck-doctor-conversation" style="display: none;"></div>';
-  html += '<div id="deck-doctor-loading" style="display: none; text-align: center; padding: 20px; color: #999;">🤔 Deck Doctor is thinking...</div>';
+  // Chat messages container
+  html += '<div id="deck-doctor-conversation" class="chat-messages"></div>';
+
+  // Loading indicator (inside messages container)
+  html += '<div id="deck-doctor-loading" class="chat-loading">🤔 Deck Doctor is thinking...</div>';
+
+  // Chat input at bottom
+  html += '<div class="chat-input-container">';
+  html += '<div class="chat-input-wrapper">';
+  html += '<input type="text" id="deck-doctor-question" placeholder="Ask anything about your deck..." onkeypress="if(event.key===\'Enter\') askDeckDoctor()">';
+  html += '<button onclick="askDeckDoctor()">Ask</button>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '</div>'; // Close chat-window
 
   html += '</div>'; // Close Deck Doctor section
 
@@ -1344,17 +1359,13 @@ async function submitDeckDoctorQuestion(question) {
     return;
   }
 
-  const conversationEl = document.getElementById('deck-doctor-conversation');
   const loadingEl = document.getElementById('deck-doctor-loading');
-
-  // Show conversation area
-  conversationEl.style.display = 'block';
 
   // Add user question to conversation
   addMessageToConversation('user', question);
 
   // Show loading
-  loadingEl.style.display = 'block';
+  loadingEl.classList.add('active');
 
   try {
     const response = await fetch(`${API_BASE}/api/deck-doctor`, {
@@ -1387,25 +1398,30 @@ async function submitDeckDoctorQuestion(question) {
   } catch (error) {
     addMessageToConversation('error', `Error: ${error.message}`);
   } finally {
-    loadingEl.style.display = 'none';
+    loadingEl.classList.remove('active');
   }
 }
 
 function addMessageToConversation(role, content) {
   const conversationEl = document.getElementById('deck-doctor-conversation');
 
+  // Create message container
   const messageDiv = document.createElement('div');
-  messageDiv.style.marginBottom = '20px';
-  messageDiv.style.padding = '15px';
-  messageDiv.style.borderRadius = '8px';
+  messageDiv.className = `chat-message ${role}`;
+
+  // Format timestamp
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  // Create message structure
+  let authorName = '';
+  let messageContent = '';
 
   if (role === 'user') {
-    messageDiv.style.background = 'rgba(102, 126, 234, 0.1)';
-    messageDiv.style.borderLeft = '3px solid #667eea';
-    messageDiv.innerHTML = `<strong style="color: #667eea;">You:</strong> ${escapeHtml(content)}`;
+    authorName = 'You';
+    messageContent = escapeHtml(content);
   } else if (role === 'assistant') {
-    messageDiv.style.background = 'rgba(118, 75, 162, 0.1)';
-    messageDiv.style.borderLeft = '3px solid #764ba2';
+    authorName = 'Deck Doctor';
 
     // Convert markdown-style formatting and wrap card names
     let formattedContent = escapeHtml(content);
@@ -1423,25 +1439,48 @@ function addMessageToConversation(role, content) {
       ];
       if (skipWords.includes(match)) return match;
 
-      // Don't wrap if it's at the start of a sentence (likely not a card name)
-      // This helps avoid wrapping sentence starters
       return wrapCardName(match);
     });
 
-    messageDiv.innerHTML = `<strong style="color: #764ba2;">Deck Doctor:</strong> ${formattedContent}`;
+    messageContent = formattedContent;
 
     // Re-setup hover listeners for new card names
     setTimeout(() => setupCardHoverListeners(), 0);
   } else if (role === 'error') {
-    messageDiv.style.background = 'rgba(255, 107, 107, 0.1)';
-    messageDiv.style.borderLeft = '3px solid #ff6b6b';
-    messageDiv.innerHTML = `<strong style="color: #ff6b6b;">Error:</strong> ${escapeHtml(content)}`;
+    authorName = 'Error';
+    messageContent = escapeHtml(content);
   }
+
+  // Build message HTML
+  messageDiv.innerHTML = `
+    <div class="chat-message-header">
+      <span class="chat-message-author">${authorName}</span>
+      <span class="chat-message-time">${timeStr}</span>
+    </div>
+    <div class="chat-message-content">${messageContent}</div>
+  `;
 
   conversationEl.appendChild(messageDiv);
 
-  // Scroll to bottom
-  messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // Scroll to bottom of chat container
+  conversationEl.scrollTop = conversationEl.scrollHeight;
+}
+
+// Clear chat conversation
+function clearChatConversation() {
+  if (!window.currentAnalyzedDeck) {
+    return;
+  }
+
+  if (!confirm('Clear the entire conversation with Deck Doctor?')) {
+    return;
+  }
+
+  const conversationEl = document.getElementById('deck-doctor-conversation');
+  conversationEl.innerHTML = '';
+
+  // Reset conversation history
+  window.currentAnalyzedDeck.conversationHistory = [];
 }
 
 // Utility functions
