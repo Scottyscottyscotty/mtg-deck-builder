@@ -898,7 +898,41 @@ function displayAnalysis(analysis) {
     html += '</div>'; // Close recommendations section
   }
 
+  // === DECK DOCTOR Q&A SECTION ===
+  html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(102, 126, 234, 0.3);">';
+  html += '<h2 style="color: #667eea; margin-bottom: 10px;">💬 Ask Deck Doctor</h2>';
+  html += '<p style="color: #999; margin-bottom: 20px;">Have questions about your deck? Ask away!</p>';
+
+  // Quick question buttons
+  html += '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">';
+  html += '<button class="quick-question-btn" onclick="askQuickQuestion(\'Do I have too many lands?\')">🌳 Too many lands?</button>';
+  html += '<button class="quick-question-btn" onclick="askQuickQuestion(\'What\\\'s my weakest card?\')">💔 Weakest card?</button>';
+  html += '<button class="quick-question-btn" onclick="askQuickQuestion(\'Should I add more removal?\')">💥 Need removal?</button>';
+  html += '<button class="quick-question-btn" onclick="askQuickQuestion(\'What\\\'s my best turn 3 play?\')">⚡ Best T3 play?</button>';
+  html += '</div>';
+
+  // Question input
+  html += '<div style="margin-bottom: 20px;">';
+  html += '<input type="text" id="deck-doctor-question" placeholder="Ask anything about your deck..." style="width: calc(100% - 120px); padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px 0 0 8px; color: #e0e0e0; font-size: 14px;">';
+  html += '<button onclick="askDeckDoctor()" style="width: 100px; padding: 12px; background: #667eea; color: white; border: none; border-radius: 0 8px 8px 0; cursor: pointer; font-weight: 600; font-size: 14px;">Ask</button>';
+  html += '</div>';
+
+  // Conversation history
+  html += '<div id="deck-doctor-conversation" style="display: none;"></div>';
+  html += '<div id="deck-doctor-loading" style="display: none; text-align: center; padding: 20px; color: #999;">🤔 Deck Doctor is thinking...</div>';
+
+  html += '</div>'; // Close Deck Doctor section
+
   el.innerHTML = html;
+
+  // Store deck data for Deck Doctor
+  const deckListForDoctor = document.getElementById('deck-list').value.trim();
+  const commanderForDoctor = document.getElementById('commander-name').value.trim();
+  window.currentAnalyzedDeck = {
+    deckList: deckListForDoctor,
+    commander: commanderForDoctor,
+    conversationHistory: []
+  };
 
   // Setup card hover listeners
   setupCardHoverListeners();
@@ -1061,6 +1095,120 @@ function displayComparison(comparison) {
   }
 
   el.innerHTML = html.replace(/\n/g, '<br>');
+}
+
+// Deck Doctor functions
+async function askDeckDoctor() {
+  const questionInput = document.getElementById('deck-doctor-question');
+  const question = questionInput.value.trim();
+
+  if (!question) {
+    alert('Please enter a question');
+    return;
+  }
+
+  await submitDeckDoctorQuestion(question);
+  questionInput.value = ''; // Clear input
+}
+
+async function askQuickQuestion(question) {
+  await submitDeckDoctorQuestion(question);
+}
+
+async function submitDeckDoctorQuestion(question) {
+  if (!window.currentAnalyzedDeck) {
+    alert('No deck analyzed yet. Please analyze a deck first.');
+    return;
+  }
+
+  const conversationEl = document.getElementById('deck-doctor-conversation');
+  const loadingEl = document.getElementById('deck-doctor-loading');
+
+  // Show conversation area
+  conversationEl.style.display = 'block';
+
+  // Add user question to conversation
+  addMessageToConversation('user', question);
+
+  // Show loading
+  loadingEl.style.display = 'block';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/deck-doctor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deckList: window.currentAnalyzedDeck.deckList,
+        commander: window.currentAnalyzedDeck.commander,
+        question,
+        conversationHistory: window.currentAnalyzedDeck.conversationHistory
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Deck Doctor failed');
+    }
+
+    // Add assistant answer to conversation
+    addMessageToConversation('assistant', data.answer);
+
+    // Update conversation history
+    window.currentAnalyzedDeck.conversationHistory.push(
+      { role: 'user', content: question },
+      { role: 'assistant', content: data.answer }
+    );
+
+  } catch (error) {
+    addMessageToConversation('error', `Error: ${error.message}`);
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+}
+
+function addMessageToConversation(role, content) {
+  const conversationEl = document.getElementById('deck-doctor-conversation');
+
+  const messageDiv = document.createElement('div');
+  messageDiv.style.marginBottom = '20px';
+  messageDiv.style.padding = '15px';
+  messageDiv.style.borderRadius = '8px';
+
+  if (role === 'user') {
+    messageDiv.style.background = 'rgba(102, 126, 234, 0.1)';
+    messageDiv.style.borderLeft = '3px solid #667eea';
+    messageDiv.innerHTML = `<strong style="color: #667eea;">You:</strong> ${escapeHtml(content)}`;
+  } else if (role === 'assistant') {
+    messageDiv.style.background = 'rgba(118, 75, 162, 0.1)';
+    messageDiv.style.borderLeft = '3px solid #764ba2';
+
+    // Convert markdown-style formatting and wrap card names
+    let formattedContent = content;
+
+    // Wrap card names (look for capitalized words that might be cards)
+    // This is a simple heuristic - won't be perfect but helpful
+    formattedContent = formattedContent.replace(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g, (match) => {
+      // Don't wrap common words
+      const skipWords = ['Commander', 'Deck', 'Doctor', 'Magic', 'The', 'This', 'That', 'These', 'Those', 'You', 'Your', 'Consider', 'However', 'Therefore'];
+      if (skipWords.includes(match)) return match;
+      return wrapCardName(match);
+    });
+
+    messageDiv.innerHTML = `<strong style="color: #764ba2;">Deck Doctor:</strong> ${formattedContent}`;
+
+    // Re-setup hover listeners for new card names
+    setTimeout(() => setupCardHoverListeners(), 0);
+  } else if (role === 'error') {
+    messageDiv.style.background = 'rgba(255, 107, 107, 0.1)';
+    messageDiv.style.borderLeft = '3px solid #ff6b6b';
+    messageDiv.innerHTML = `<strong style="color: #ff6b6b;">Error:</strong> ${escapeHtml(content)}`;
+  }
+
+  conversationEl.appendChild(messageDiv);
+
+  // Scroll to bottom
+  messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // Utility functions

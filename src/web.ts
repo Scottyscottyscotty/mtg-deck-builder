@@ -629,6 +629,98 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 }`;
 }
 
+// Deck Doctor Q&A endpoint
+app.post('/api/deck-doctor', async (req, res) => {
+  try {
+    const { deckList, commander, question, conversationHistory = [] } = req.body;
+
+    if (!deckList) {
+      return res.status(400).json({ error: 'Deck list is required' });
+    }
+
+    if (!question) {
+      return res.status(400).json({ error: 'Question is required' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    // Parse deck
+    const { parseDeckList } = await import('./deckParser.js');
+    const parsedDeck = parseDeckList(deckList);
+
+    if (parsedDeck.length === 0) {
+      return res.status(400).json({ error: 'Invalid deck list' });
+    }
+
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const anthropic = new Anthropic({ apiKey });
+
+    // Build conversation context
+    const messages: Array<{role: 'user' | 'assistant', content: string}> = [];
+
+    // Add conversation history
+    conversationHistory.forEach((msg: {role: string, content: string}) => {
+      messages.push({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      });
+    });
+
+    // Add current question with deck context
+    const prompt = buildDeckDoctorPrompt(parsedDeck, commander, question);
+    messages.push({ role: 'user', content: prompt });
+
+    console.log(`\n💬 Deck Doctor: "${question}"\n`);
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 4096,
+      temperature: 0,
+      messages,
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    res.json({
+      success: true,
+      answer: content.text.trim(),
+    });
+  } catch (error: any) {
+    console.error('Deck Doctor error:', error);
+    res.status(500).json({ error: error.message || 'Deck Doctor failed' });
+  }
+});
+
+function buildDeckDoctorPrompt(parsedDeck: Array<{name: string, quantity: number}>, commander: string | undefined, question: string): string {
+  const cardList = parsedDeck.map(c => c.name).join(', ');
+
+  return `You are "Deck Doctor", an expert Magic: The Gathering deck analyst. Answer the user's question about their Commander deck with detailed, actionable advice.
+
+## Deck Context
+${commander ? `**Commander:** ${commander}\n` : ''}**Deck (${parsedDeck.length} unique cards):**
+${cardList}
+
+## User's Question
+${question}
+
+## Instructions
+- Give specific, actionable answers based on the cards in this deck
+- Reference specific card names from the deck when relevant
+- If asking about combos/synergies, suggest real cards that would work with cards in this deck
+- If the question mentions a specific card, focus your analysis on that card in the context of this deck
+- Be concise but thorough
+- Use your Magic knowledge to provide strategic insights
+- Only suggest REAL Magic cards (do not hallucinate cards)
+
+Answer the question directly and helpfully.`;
+}
+
 app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════════════');
   console.log('           🃏 MTG Deck Analyzer Web Interface 🃏');
