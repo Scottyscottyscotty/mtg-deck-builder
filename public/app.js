@@ -568,7 +568,7 @@ function displayDropInResults(data) {
     html += '<h3>🆕 Cards You\'re Adding</h3>';
     html += '<ul>';
     data.additions.forEach(card => {
-      html += `<li>${escapeHtml(card)}</li>`;
+      html += `<li>${wrapCardName(card)}</li>`;
     });
     html += '</ul>';
     html += '</div>';
@@ -582,7 +582,7 @@ function displayDropInResults(data) {
 
     data.cutRecommendations.forEach((cut) => {
       html += '<div class="card-suggestion">';
-      html += `<div class="card-suggestion-header">${escapeHtml(cut.card)}</div>`;
+      html += `<div class="card-suggestion-header">${wrapCardName(cut.card)}</div>`;
       html += `<div class="card-suggestion-reason">${escapeHtml(cut.reasoning)}</div>`;
       html += '</div>';
     });
@@ -812,22 +812,6 @@ function displayAnalysis(analysis) {
     html += '</div>';
   }
 
-  // Near-miss combos
-  if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
-    html += '<div class="section combo-section">';
-    html += '<h3>🎯 Near-Miss Combos</h3>';
-    html += '<p style="color: #999; margin-bottom: 15px;">Add 1-2 cards to unlock these combos:</p>';
-    html += '<ul>';
-    analysis.nearMissCombos.slice(0, 5).forEach((nearMiss) => {
-      html += `<li><strong>Missing:</strong> ${wrapCardNames(nearMiss.missingCards.join(', '))}<br>`;
-      html += `→ Result: ${escapeHtml(nearMiss.result)}<br>`;
-      html += `→ You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}`;
-      html += '</li>';
-    });
-    html += '</ul>';
-    html += '</div>';
-  }
-
   // Existing combos (from Claude analysis)
   if (analysis.existingCombos && analysis.existingCombos.length > 0) {
     html += '<div class="section">';
@@ -852,38 +836,67 @@ function displayAnalysis(analysis) {
     html += '</div>';
   }
 
-  // Card suggestions
-  if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
-    html += '<div class="section">';
-    html += '<h3>🎯 Card Suggestions</h3>';
-
-    analysis.cardSuggestions.forEach((s) => {
-      const priceDisplay = s.price !== undefined
-        ? `${s.priceTier} ($${s.price.toFixed(2)})`
-        : (s.priceTier || '?');
-
-      // Popularity tag
-      const popTag = s.popularity && s.inclusionRate !== undefined
-        ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
-        : '';
-
-      html += '<div class="card-suggestion">';
-      html += `<div class="card-suggestion-header">`;
-      html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
-      html += `</div>`;
-      html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
-      html += `${createShopLinks(s.card)}`;
-      html += '</div>';
-    });
-
-    html += '</div>';
-  }
-
   // Overall assessment
   html += '<div class="section">';
   html += '<h3>📝 Overall Assessment</h3>';
   html += `<p>${escapeHtml(analysis.overallAssessment)}</p>`;
   html += '</div>';
+
+  // === RECOMMENDATIONS SECTION ===
+  // Visual separator before recommendations
+  const hasRecommendations = (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) ||
+                              (analysis.cardSuggestions && analysis.cardSuggestions.length > 0);
+
+  if (hasRecommendations) {
+    html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(102, 126, 234, 0.3);">';
+    html += '<h2 style="color: #667eea; margin-bottom: 20px;">💡 Deck Doctor Recommendations</h2>';
+    html += '<p style="color: #999; margin-bottom: 30px;">Based on the analysis above, here are suggestions to improve your deck:</p>';
+
+    // Near-miss combos (these are recommendations to add cards)
+    if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
+      html += '<div class="section combo-section">';
+      html += '<h3>🎯 Unlock These Combos</h3>';
+      html += '<p style="color: #999; margin-bottom: 15px;">Add 1-2 cards to unlock these powerful combos:</p>';
+      html += '<ul>';
+      analysis.nearMissCombos.slice(0, 5).forEach((nearMiss) => {
+        html += `<li><strong>Missing:</strong> ${wrapCardNames(nearMiss.missingCards.join(', '))}<br>`;
+        html += `→ Result: ${escapeHtml(nearMiss.result)}<br>`;
+        html += `→ You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}`;
+        html += '</li>';
+      });
+      html += '</ul>';
+      html += '</div>';
+    }
+
+    // Card suggestions
+    if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
+      html += '<div class="section">';
+      html += '<h3>🎯 Recommended Cards</h3>';
+
+      analysis.cardSuggestions.forEach((s) => {
+        const priceDisplay = s.price !== undefined
+          ? `${s.priceTier} ($${s.price.toFixed(2)})`
+          : (s.priceTier || '?');
+
+        // Popularity tag
+        const popTag = s.popularity && s.inclusionRate !== undefined
+          ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
+          : '';
+
+        html += '<div class="card-suggestion">';
+        html += `<div class="card-suggestion-header">`;
+        html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
+        html += `</div>`;
+        html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+        html += `${createShopLinks(s.card)}`;
+        html += '</div>';
+      });
+
+      html += '</div>';
+    }
+
+    html += '</div>'; // Close recommendations section
+  }
 
   el.innerHTML = html;
 
