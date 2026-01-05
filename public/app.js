@@ -840,7 +840,26 @@ async function loadHistoryEntry(id) {
 function displayAnalysis(analysis) {
   const el = document.getElementById('analyze-results');
 
-  let html = '<h2>📊 Deck Analysis Results</h2>';
+  let html = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">';
+  html += '<h2 style="margin: 0;">📊 Deck Analysis Results</h2>';
+
+  // Export button dropdown
+  html += '<div style="position: relative;">';
+  html += '<button onclick="toggleExportMenu()" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; gap: 8px;">';
+  html += '📥 Export Deck';
+  html += '</button>';
+  html += '<div id="export-menu" style="display: none; position: absolute; right: 0; top: 45px; background: rgba(30, 30, 50, 0.98); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100;">';
+  html += '<div style="padding: 8px 0;">';
+  html += '<button onclick="exportDeck(\'text\')" class="export-option">📄 Plain Text</button>';
+  html += '<button onclick="exportDeck(\'moxfield\')" class="export-option">🦊 Moxfield</button>';
+  html += '<button onclick="exportDeck(\'archidekt\')" class="export-option">🏛️ Archidekt</button>';
+  html += '<button onclick="exportDeck(\'arena\')" class="export-option">⚔️ MTG Arena</button>';
+  html += '<button onclick="exportDeck(\'mtgo\')" class="export-option">💻 MTGO</button>';
+  html += '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '</div>';
 
   // Overview section
   html += '<div class="section">';
@@ -1532,6 +1551,154 @@ function clearChatConversation() {
 
   // Reset conversation history
   window.currentAnalyzedDeck.conversationHistory = [];
+}
+
+// Export functions
+function toggleExportMenu() {
+  const menu = document.getElementById('export-menu');
+  if (!menu) return;
+
+  if (menu.style.display === 'none' || menu.style.display === '') {
+    menu.style.display = 'block';
+    // Close menu when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  } else {
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+}
+
+function closeExportMenu(e) {
+  const menu = document.getElementById('export-menu');
+  if (!menu) return;
+
+  // Check if click is outside the export menu area
+  if (!menu.contains(e.target) && !e.target.closest('button[onclick="toggleExportMenu()"]')) {
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+}
+
+function exportDeck(format) {
+  const deckList = document.getElementById('deck-list').value.trim();
+  const deckName = document.getElementById('deck-name').value.trim() || 'MTG_Deck';
+  const commander = document.getElementById('commander-name').value.trim();
+
+  if (!deckList) {
+    alert('No deck to export. Please analyze a deck first.');
+    return;
+  }
+
+  // Close export menu
+  const menu = document.getElementById('export-menu');
+  if (menu) menu.style.display = 'none';
+
+  // Parse deck list
+  const lines = deckList.split('\n').filter(l => l.trim());
+  const cards = [];
+
+  for (const line of lines) {
+    const match = line.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      cards.push({ quantity: parseInt(match[1]), name: match[2].trim() });
+    }
+  }
+
+  let content = '';
+  let filename = '';
+  let mimeType = 'text/plain';
+
+  switch (format) {
+    case 'text':
+      // Plain text format
+      filename = `${sanitizeFilename(deckName)}.txt`;
+      if (commander) {
+        content += `Commander:\n1 ${commander}\n\n`;
+      }
+      content += 'Deck:\n';
+      cards.forEach(c => {
+        content += `${c.quantity} ${c.name}\n`;
+      });
+      break;
+
+    case 'moxfield':
+      // Moxfield format (simple text with commander section)
+      filename = `${sanitizeFilename(deckName)}_moxfield.txt`;
+      if (commander) {
+        content += `Commander\n1 ${commander}\n\n`;
+      }
+      content += 'Deck\n';
+      cards.forEach(c => {
+        content += `${c.quantity} ${c.name}\n`;
+      });
+      break;
+
+    case 'archidekt':
+      // Archidekt JSON format
+      filename = `${sanitizeFilename(deckName)}_archidekt.json`;
+      mimeType = 'application/json';
+      const archidektDeck = {
+        name: deckName,
+        format: 'Commander',
+        cards: cards.map(c => ({
+          quantity: c.quantity,
+          card: { name: c.name }
+        }))
+      };
+      if (commander) {
+        archidektDeck.commander = commander;
+      }
+      content = JSON.stringify(archidektDeck, null, 2);
+      break;
+
+    case 'arena':
+      // MTG Arena format (quantity + name, no commander support)
+      filename = `${sanitizeFilename(deckName)}_arena.txt`;
+      content += 'Deck\n';
+      cards.forEach(c => {
+        content += `${c.quantity} ${c.name}\n`;
+      });
+      if (commander) {
+        content += `\n// Commander: ${commander}\n`;
+      }
+      break;
+
+    case 'mtgo':
+      // MTGO format (.dec file)
+      filename = `${sanitizeFilename(deckName)}.dec`;
+      if (commander) {
+        content += `// Commander: ${commander}\n`;
+      }
+      cards.forEach(c => {
+        content += `${c.quantity} ${c.name}\n`;
+      });
+      break;
+
+    default:
+      alert('Unknown export format');
+      return;
+  }
+
+  // Trigger download
+  downloadFile(content, filename, mimeType);
+}
+
+function sanitizeFilename(name) {
+  return name.replace(/[^a-z0-9_\-]/gi, '_');
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Utility functions
