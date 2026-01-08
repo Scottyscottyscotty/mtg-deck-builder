@@ -983,7 +983,6 @@ async function loadHistoryEntry(id) {
 
     // Switch to analyze tab and populate
     switchTab('analyze');
-    document.querySelector('.tab').click();
 
     const deckList = data.entry.deck.map(c => `${c.quantity} ${c.name}`).join('\n');
     document.getElementById('deck-list').value = deckList;
