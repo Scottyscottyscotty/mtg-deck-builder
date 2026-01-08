@@ -1068,121 +1068,121 @@ function displayAnalysis(analysis) {
   html += `<p>${escapeHtml(analysis.overallAssessment)}</p>`;
   html += '</div>';
 
-  // === RECOMMENDATIONS SECTION - HIDDEN (replaced by Upgrade Path Roadmap) ===
-  // const hasRecommendations = (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) ||
-  //                             (analysis.cardSuggestions && analysis.cardSuggestions.length > 0);
+  // === RECOMMENDATIONS SECTION ===
+  const hasRecommendations = (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) ||
+                              (analysis.cardSuggestions && analysis.cardSuggestions.length > 0);
 
-  // if (hasRecommendations) {
-  //   html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(102, 126, 234, 0.3);">';
-  //   html += '<h2 style="color: #667eea; margin-bottom: 20px;">💡 Deck Doctor Recommendations</h2>';
-  //   html += '<p style="color: #999; margin-bottom: 30px;">Based on the analysis above, here are suggestions to improve your deck:</p>';
+  if (hasRecommendations) {
+    html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(102, 126, 234, 0.3);">';
+    html += '<h2 style="color: #667eea; margin-bottom: 20px;">💡 Deck Doctor Recommendations</h2>';
+    html += '<p style="color: #999; margin-bottom: 30px;">Based on the analysis above, here are suggestions to improve your deck:</p>';
 
-  //   // Near-miss combos (these are recommendations to add cards)
-  //   if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
-  //     html += '<div class="section combo-section">';
-  //     html += '<h3>🎯 Unlock These Combos</h3>';
-  //     html += '<p style="color: #999; margin-bottom: 15px;">Add 1-2 cards to unlock these powerful combos:</p>';
-  //     html += '<ul>';
-  //     analysis.nearMissCombos.slice(0, 5).forEach((nearMiss) => {
-  //       html += `<li><strong>Missing:</strong> ${wrapCardNames(nearMiss.missingCards.join(', '))}<br>`;
-  //       html += `→ Result: ${escapeHtml(nearMiss.result)}<br>`;
-  //       html += `→ You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}`;
-  //       html += '</li>';
-  //     });
-  //     html += '</ul>';
-  //     html += '</div>';
-  //   }
+    // Near-miss combos (these are recommendations to add cards)
+    if (analysis.nearMissCombos && analysis.nearMissCombos.length > 0) {
+      html += '<div class="section combo-section">';
+      html += '<h3>🎯 Unlock These Combos</h3>';
+      html += '<p style="color: #999; margin-bottom: 15px;">Add 1-2 cards to unlock these powerful combos:</p>';
+      html += '<ul>';
+      analysis.nearMissCombos.slice(0, 5).forEach((nearMiss) => {
+        html += `<li><strong>Missing:</strong> ${wrapCardNames(nearMiss.missingCards.join(', '))}<br>`;
+        html += `→ Result: ${escapeHtml(nearMiss.result)}<br>`;
+        html += `→ You have: ${wrapCardNames(nearMiss.cardsYouHave.join(', '))}`;
+        html += '</li>';
+      });
+      html += '</ul>';
+      html += '</div>';
+    }
 
-  //   // Card suggestions
-  //   if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
-  //     html += '<div class="section">';
-  //     html += '<h3>🎯 Recommended Cards</h3>';
-  //
-  //     // Filter and Sort controls
-  //     html += '<div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">';
-  //
-  //     // Budget filter
-  //     html += '<div style="flex: 1; min-width: 200px;">';
-  //     html += '<label for="budget-filter" style="margin-right: 10px; font-weight: normal; display: inline;">Budget:</label>';
-  //     html += '<select id="budget-filter" onchange="filterAndSortRecommendations()" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
-  //     html += '<option value="999999">Any Budget</option>';
-  //     html += '<option value="5">Under $5</option>';
-  //     html += '<option value="10">Under $10</option>';
-  //     html += '<option value="20">Under $20</option>';
-  //     html += '<option value="50">Under $50</option>';
-  //     html += '</select>';
-  //     html += '</div>';
-  //
-  //     // Sort dropdown
-  //     html += '<div style="flex: 1; min-width: 200px;">';
-  //     html += '<label for="sort-recommendations" style="margin-right: 10px; font-weight: normal; display: inline;">Sort by:</label>';
-  //     html += '<select id="sort-recommendations" onchange="filterAndSortRecommendations()" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
-  //     html += '<option value="default">Default</option>';
-  //     html += '<option value="confidence-high">Confidence (High → Low)</option>';
-  //     html += '<option value="confidence-low">Confidence (Low → High)</option>';
-  //     html += '<option value="price-low">Price (Low → High)</option>';
-  //     html += '<option value="price-high">Price (High → Low)</option>';
-  //     html += '</select>';
-  //     html += '</div>';
-  //
-  //     html += '</div>';
-  //
-  //     html += '<div id="recommendations-container">';
-  //
-  //     // Store original suggestions for sorting
-  //     window.currentRecommendations = [...analysis.cardSuggestions];
-  //
-  //     analysis.cardSuggestions.forEach((s) => {
-  //       const priceDisplay = s.price !== undefined
-  //         ? `${s.priceTier} (Est. $${s.price.toFixed(2)})`
-  //         : (s.priceTier || '?');
-  //
-  //       // Popularity tag
-  //       const popTag = s.popularity && s.inclusionRate !== undefined
-  //         ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
-  //         : '';
-  //
-  //       // Confidence level badge with tooltip
-  //       const confidence = s.confidence || 'medium';
-  //       const confidenceColors = {
-  //         high: { bg: 'rgba(76, 175, 80, 0.15)', border: '#4caf50', text: '#4caf50' },
-  //         medium: { bg: 'rgba(255, 193, 7, 0.15)', border: '#ffc107', text: '#ffc107' },
-  //         low: { bg: 'rgba(255, 152, 0, 0.15)', border: '#ff9800', text: '#ff9800' }
-  //       };
-  //       const confidenceColor = confidenceColors[confidence];
-  //       const confidenceTooltip = confidence === 'high' ? 'High confidence: Core staple or obvious fit for your strategy' :
-  //                                 confidence === 'medium' ? 'Medium confidence: Strong card but not essential' :
-  //                                 'Low confidence: Experimental or situational pick';
-  //       const confidenceBadge = `<span title="${confidenceTooltip}" style="display: inline-block; padding: 2px 8px; margin-left: 8px; background: ${confidenceColor.bg}; border: 1px solid ${confidenceColor.border}; border-radius: 12px; font-size: 0.75em; color: ${confidenceColor.text}; font-weight: 600; text-transform: uppercase; cursor: help;">${confidence}</span>`;
-  //
-  //       // Price warning for expensive cards
-  //       let priceWarning = '';
-  //       if (s.price && s.price > 50) {
-  //         priceWarning = `<div style="background: rgba(255, 159, 67, 0.1); border-left: 3px solid #ff9f43; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
-  //         priceWarning += `⚠️ <strong>Expensive Card Alert:</strong> This card costs over $50. Make sure it's worth the investment for your deck's strategy and budget.`;
-  //         priceWarning += `</div>`;
-  //       } else if (s.price && s.price > 20) {
-  //         priceWarning = `<div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
-  //         priceWarning += `💰 <strong>Moderate Cost:</strong> This card costs over $20. Consider if it fits your budget before purchasing.`;
-  //         priceWarning += `</div>`;
-  //       }
-  //
-  //       html += '<div class="card-suggestion">';
-  //       html += `<div class="card-suggestion-header">`;
-  //       html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}${confidenceBadge}`;
-  //       html += `</div>`;
-  //       html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
-  //       html += priceWarning;
-  //       html += `${createShopLinks(s.card)}`;
-  //       html += '</div>';
-  //     });
-  //
-  //     html += '</div>'; // Close recommendations-container
-  //     html += '</div>'; // Close section
-  //   }
-  //
-  //   html += '</div>'; // Close recommendations section
-  // }
+    // Card suggestions
+    if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
+      html += '<div class="section">';
+      html += '<h3>🎯 Recommended Cards</h3>';
+
+      // Filter and Sort controls
+      html += '<div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">';
+
+      // Budget filter
+      html += '<div style="flex: 1; min-width: 200px;">';
+      html += '<label for="budget-filter" style="margin-right: 10px; font-weight: normal; display: inline;">Budget:</label>';
+      html += '<select id="budget-filter" onchange="filterAndSortRecommendations()" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
+      html += '<option value="999999">Any Budget</option>';
+      html += '<option value="5">Under $5</option>';
+      html += '<option value="10">Under $10</option>';
+      html += '<option value="20">Under $20</option>';
+      html += '<option value="50">Under $50</option>';
+      html += '</select>';
+      html += '</div>';
+
+      // Sort dropdown
+      html += '<div style="flex: 1; min-width: 200px;">';
+      html += '<label for="sort-recommendations" style="margin-right: 10px; font-weight: normal; display: inline;">Sort by:</label>';
+      html += '<select id="sort-recommendations" onchange="filterAndSortRecommendations()" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #e0e0e0;">';
+      html += '<option value="default">Default</option>';
+      html += '<option value="confidence-high">Confidence (High → Low)</option>';
+      html += '<option value="confidence-low">Confidence (Low → High)</option>';
+      html += '<option value="price-low">Price (Low → High)</option>';
+      html += '<option value="price-high">Price (High → Low)</option>';
+      html += '</select>';
+      html += '</div>';
+
+      html += '</div>';
+
+      html += '<div id="recommendations-container">';
+
+      // Store original suggestions for sorting
+      window.currentRecommendations = [...analysis.cardSuggestions];
+
+      analysis.cardSuggestions.forEach((s) => {
+        const priceDisplay = s.price !== undefined
+          ? `${s.priceTier} (Est. $${s.price.toFixed(2)})`
+          : (s.priceTier || '?');
+
+        // Popularity tag
+        const popTag = s.popularity && s.inclusionRate !== undefined
+          ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
+          : '';
+
+        // Confidence level badge with tooltip
+        const confidence = s.confidence || 'medium';
+        const confidenceColors = {
+          high: { bg: 'rgba(76, 175, 80, 0.15)', border: '#4caf50', text: '#4caf50' },
+          medium: { bg: 'rgba(255, 193, 7, 0.15)', border: '#ffc107', text: '#ffc107' },
+          low: { bg: 'rgba(255, 152, 0, 0.15)', border: '#ff9800', text: '#ff9800' }
+        };
+        const confidenceColor = confidenceColors[confidence];
+        const confidenceTooltip = confidence === 'high' ? 'High confidence: Core staple or obvious fit for your strategy' :
+                                  confidence === 'medium' ? 'Medium confidence: Strong card but not essential' :
+                                  'Low confidence: Experimental or situational pick';
+        const confidenceBadge = `<span title="${confidenceTooltip}" style="display: inline-block; padding: 2px 8px; margin-left: 8px; background: ${confidenceColor.bg}; border: 1px solid ${confidenceColor.border}; border-radius: 12px; font-size: 0.75em; color: ${confidenceColor.text}; font-weight: 600; text-transform: uppercase; cursor: help;">${confidence}</span>`;
+
+        // Price warning for expensive cards
+        let priceWarning = '';
+        if (s.price && s.price > 50) {
+          priceWarning = `<div style="background: rgba(255, 159, 67, 0.1); border-left: 3px solid #ff9f43; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
+          priceWarning += `⚠️ <strong>Expensive Card Alert:</strong> This card costs over $50. Make sure it's worth the investment for your deck's strategy and budget.`;
+          priceWarning += `</div>`;
+        } else if (s.price && s.price > 20) {
+          priceWarning = `<div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 0.9em;">`;
+          priceWarning += `💰 <strong>Moderate Cost:</strong> This card costs over $20. Consider if it fits your budget before purchasing.`;
+          priceWarning += `</div>`;
+        }
+
+        html += '<div class="card-suggestion">';
+        html += `<div class="card-suggestion-header">`;
+        html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}${confidenceBadge}`;
+        html += `</div>`;
+        html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+        html += priceWarning;
+        html += `${createShopLinks(s.card)}`;
+        html += '</div>';
+      });
+
+      html += '</div>'; // Close recommendations-container
+      html += '</div>'; // Close section
+    }
+
+    html += '</div>'; // Close recommendations section
+  }
 
   // === DECK DOCTOR Q&A SECTION ===
   html += '<div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid rgba(102, 126, 234, 0.3);">';
@@ -1836,13 +1836,14 @@ function startProgressSimulation(prefix) {
   ];
 
   const updateProgress = () => {
-    // Slow down as we approach 95%
+    // Slow down as we approach 98%
     const increment = progress < 50 ? 1.5 :
                      progress < 70 ? 1.0 :
                      progress < 85 ? 0.7 :
-                     progress < 90 ? 0.4 : 0.2;
+                     progress < 92 ? 0.4 :
+                     progress < 96 ? 0.15 : 0.08;
 
-    progress = Math.min(95, progress + increment);
+    progress = Math.min(98, progress + increment);
 
     progressBar.style.width = `${progress}%`;
     progressText.textContent = `${Math.floor(progress)}%`;
