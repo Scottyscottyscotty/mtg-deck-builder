@@ -432,7 +432,7 @@ app.post('/api/find-card', async (req, res) => {
 
     let resultText = content.text.trim();
     if (resultText.startsWith('```')) {
-      resultText = resultText.replace(/^```(?:json)?\\n/, '').replace(/\\n```$/, '');
+      resultText = resultText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
     }
 
     const result = JSON.parse(resultText);

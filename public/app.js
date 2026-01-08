@@ -1,12 +1,24 @@
 const API_BASE = '';
 
 // Tab switching
-function switchTab(tabName) {
+function switchTab(tabName, event) {
   // Update tab buttons
   document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.remove('active');
   });
-  event.target.classList.add('active');
+
+  // Add active class to the correct tab
+  if (event && event.target) {
+    event.target.classList.add('active');
+  } else {
+    // Find and activate the tab by name
+    document.querySelectorAll('.tab').forEach(tab => {
+      if (tab.textContent.toLowerCase().includes(tabName.toLowerCase()) ||
+          tab.getAttribute('onclick')?.includes(`'${tabName}'`)) {
+        tab.classList.add('active');
+      }
+    });
+  }
 
   // Update tab content
   document.querySelectorAll('.tab-content').forEach(content => {
