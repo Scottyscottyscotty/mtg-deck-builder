@@ -77,11 +77,11 @@ Please analyze this deck and provide:
    - Define upgrade priorities for different budget tiers ($0-25, $25-75, $75-150, $150+)
    - **PRIORITIZE THE PRIMARY WEAK POINT** - suggest upgrades that fix it first
    - For example: If mana base is critical, budget tier should focus on untapped lands
-   - **IMPORTANT**: `recommendedUpgrades` must be an array of ONLY card names, nothing else
+   - **IMPORTANT**: 'recommendedUpgrades' must be an array of ONLY card names, nothing else
      - CORRECT: ["Stomping Ground", "Cragcrown Pathway", "Myriad Landscape"]
      - WRONG: ["Remove taplands and add Stomping Ground", "Add untapped lands like Cragcrown Pathway"]
    - List specific card names for each tier that address the most impactful weaknesses
-   - Explain expected impact in the `expectedImpact` field (not in card names)
+   - Explain expected impact in the 'expectedImpact' field (not in card names)
    - **CRITICAL REMINDER**: ALL upgrade suggestions MUST match ${colorSymbols} color identity
    - When suggesting lands, ensure they ONLY produce colors in ${colorSymbols}
 

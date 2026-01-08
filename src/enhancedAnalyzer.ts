@@ -318,11 +318,11 @@ ${deckList}`;
   prompt += `   - Define upgrade priorities for different budget tiers ($0-25, $25-75, $75-150, $150+)\n`;
   prompt += `   - **PRIORITIZE THE PRIMARY WEAK POINT** - suggest upgrades that fix it first\n`;
   prompt += `   - For example: If mana base is critical, budget tier should focus on untapped lands\n`;
-  prompt += `   - **IMPORTANT**: \`recommendedUpgrades\` must be an array of ONLY card names, nothing else\n`;
+  prompt += `   - **IMPORTANT**: 'recommendedUpgrades' must be an array of ONLY card names, nothing else\n`;
   prompt += `     - CORRECT: ["Stomping Ground", "Cragcrown Pathway", "Myriad Landscape"]\n`;
   prompt += `     - WRONG: ["Remove taplands and add Stomping Ground", "Add untapped lands like Cragcrown Pathway"]\n`;
   prompt += `   - List specific card names for each tier that address the most impactful weaknesses\n`;
-  prompt += `   - Explain expected impact in the \`expectedImpact\` field (not in card names)\n`;
+  prompt += `   - Explain expected impact in the 'expectedImpact' field (not in card names)\n`;
   prompt += `   - **CRITICAL REMINDER**: ALL upgrade suggestions MUST match ${colorSymbols} color identity\n`;
   prompt += `   - When suggesting lands, ensure they ONLY produce colors in ${colorSymbols}\n`;
 
