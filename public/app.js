@@ -128,6 +128,9 @@ async function analyzeDeck() {
   hideResults('analyze-results');
   showLoading('analyze-loading');
 
+  // Start progress simulation
+  const progressInterval = startProgressSimulation('analyze');
+
   try {
     const response = await fetch(`${API_BASE}/api/analyze`, {
       method: 'POST',
@@ -147,11 +150,15 @@ async function analyzeDeck() {
       throw new Error(data.error || 'Analysis failed');
     }
 
+    // Complete progress
+    completeProgress('analyze');
+
     displayAnalysis(data.analysis);
     showResults('analyze-results');
   } catch (error) {
     showError('analyze-error', error.message);
   } finally {
+    clearInterval(progressInterval);
     hideLoading('analyze-loading');
   }
 }
@@ -799,27 +806,27 @@ function displayAnalysisInElement(analysis, elementId) {
     html += '</div>';
   }
 
-  // Card suggestions - HIDDEN (replaced by Upgrade Path Roadmap)
-  // if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
-  //   html += '<div class="section">';
-  //   html += '<h3>🎯 Card Suggestions</h3>';
-  //   analysis.cardSuggestions.forEach((s) => {
-  //     const priceDisplay = s.price !== undefined
-  //       ? `${s.priceTier} ($${s.price.toFixed(2)})`
-  //       : (s.priceTier || '?');
-  //     const popTag = s.popularity && s.inclusionRate !== undefined
-  //       ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
-  //       : '';
-  //     html += '<div class="card-suggestion">';
-  //     html += `<div class="card-suggestion-header">`;
-  //     html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
-  //     html += `</div>`;
-  //     html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
-  //     html += `${createShopLinks(s.card)}`;
-  //     html += '</div>';
-  //   });
-  //   html += '</div>';
-  // }
+  // Card suggestions
+  if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🎯 Card Suggestions</h3>';
+    analysis.cardSuggestions.forEach((s) => {
+      const priceDisplay = s.price !== undefined
+        ? `${s.priceTier} ($${s.price.toFixed(2)})`
+        : (s.priceTier || '?');
+      const popTag = s.popularity && s.inclusionRate !== undefined
+        ? ` <span style="color: #999;">[${s.popularity} ${s.inclusionRate.toFixed(0)}%]</span>`
+        : '';
+      html += '<div class="card-suggestion">';
+      html += `<div class="card-suggestion-header">`;
+      html += `${wrapCardName(s.card)} — ${priceDisplay}${popTag}`;
+      html += `</div>`;
+      html += `<div class="card-suggestion-reason">${escapeHtml(s.reasoning)}</div>`;
+      html += `${createShopLinks(s.card)}`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
 
   html += '<div class="section">';
   html += '<h3>📝 Overall Assessment</h3>';
@@ -1807,6 +1814,60 @@ function downloadFile(content, filename, mimeType) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Progress simulation for loading indicators
+function startProgressSimulation(prefix) {
+  const progressBar = document.getElementById(`${prefix}-progress-bar`);
+  const progressText = document.getElementById(`${prefix}-progress-text`);
+  const status = document.getElementById(`${prefix}-status`);
+
+  let progress = 0;
+  const statuses = [
+    { threshold: 0, text: 'Initializing analysis...' },
+    { threshold: 10, text: 'Parsing deck list...' },
+    { threshold: 20, text: 'Fetching card data...' },
+    { threshold: 35, text: 'Analyzing mana curve...' },
+    { threshold: 50, text: 'Identifying synergies...' },
+    { threshold: 65, text: 'Finding weak points...' },
+    { threshold: 75, text: 'Generating upgrade recommendations...' },
+    { threshold: 85, text: 'Calculating bracket rating...' },
+    { threshold: 90, text: 'Finalizing analysis...' }
+  ];
+
+  const updateProgress = () => {
+    // Slow down as we approach 95%
+    const increment = progress < 50 ? 1.5 :
+                     progress < 70 ? 1.0 :
+                     progress < 85 ? 0.7 :
+                     progress < 90 ? 0.4 : 0.2;
+
+    progress = Math.min(95, progress + increment);
+
+    progressBar.style.width = `${progress}%`;
+    progressText.textContent = `${Math.floor(progress)}%`;
+
+    // Update status message
+    for (let i = statuses.length - 1; i >= 0; i--) {
+      if (progress >= statuses[i].threshold) {
+        status.textContent = statuses[i].text;
+        break;
+      }
+    }
+  };
+
+  updateProgress();
+  return setInterval(updateProgress, 300);
+}
+
+function completeProgress(prefix) {
+  const progressBar = document.getElementById(`${prefix}-progress-bar`);
+  const progressText = document.getElementById(`${prefix}-progress-text`);
+  const status = document.getElementById(`${prefix}-status`);
+
+  progressBar.style.width = '100%';
+  progressText.textContent = '100%';
+  status.textContent = 'Complete! ✓';
 }
 
 // Utility functions

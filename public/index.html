@@ -204,6 +204,65 @@
       100% { transform: rotate(360deg); }
     }
 
+    .progress-container {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      overflow: hidden;
+      height: 24px;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 100%
+      );
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-text {
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .loading-status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 500;
+    }
+
     .results {
       display: none;
       line-height: 1.8;
@@ -702,7 +761,13 @@
 
       <div class="loading" id="analyze-loading">
         <div class="spinner"></div>
-        <p>Analyzing your deck... This may take 30-60 seconds</p>
+        <p>Analyzing your deck...</p>
+        <div class="progress-container">
+          <div class="progress-bar" id="analyze-progress-bar" style="width: 0%">
+            <span class="progress-text" id="analyze-progress-text">0%</span>
+          </div>
+        </div>
+        <div class="loading-status" id="analyze-status">Initializing analysis...</div>
       </div>
 
       <div class="card results" id="analyze-results"></div>
