@@ -623,9 +623,129 @@
       flex: 1;
     }
 
+    /* Mobile Responsive Styles */
     @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 0;
+      }
+
+      header {
+        padding: 20px 15px;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .subtitle {
+        font-size: 0.95em;
+      }
+
+      .tabs {
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+
+      .tab {
+        padding: 10px 16px;
+        font-size: 0.9em;
+        flex: 1 1 auto;
+        min-width: 120px;
+        text-align: center;
+      }
+
+      .card {
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+
       .flex-row {
         flex-direction: column;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      textarea {
+        min-height: 200px;
+        font-size: 14px;
+      }
+
+      input[type="text"],
+      select {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+      }
+
+      button {
+        width: 100%;
+        padding: 14px;
+        font-size: 1em;
+      }
+
+      /* Make card suggestions more readable on mobile */
+      .card-suggestion {
+        padding: 12px;
+      }
+
+      .card-suggestion-header {
+        font-size: 0.95em;
+        word-break: break-word;
+      }
+
+      .card-suggestion-reason {
+        font-size: 0.9em;
+      }
+
+      /* Stack shop links vertically on mobile */
+      .shop-link {
+        display: block;
+        margin-right: 0;
+        margin-bottom: 6px;
+        text-align: center;
+      }
+
+      /* Adjust card preview for mobile */
+      .card-preview {
+        max-width: 250px;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+      }
+
+      /* Make slider controls touch-friendly */
+      input[type="range"] {
+        height: 30px;
+      }
+
+      /* Adjust progress bar for mobile */
+      .progress-container {
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5em;
+      }
+
+      .tab {
+        min-width: 90px;
+        padding: 8px 12px;
+        font-size: 0.85em;
+      }
+
+      .card {
+        padding: 12px;
+      }
+
+      .card-preview {
+        max-width: 200px;
       }
     }
 
@@ -698,6 +818,7 @@
       <button class="tab" onclick="switchTab('complete')">Complete Partial Deck</button>
       <button class="tab" onclick="switchTab('dropin')">Drop In</button>
       <button class="tab" onclick="switchTab('findcard')">Find Card</button>
+      <button class="tab" onclick="switchTab('collection')">Collection Optimizer</button>
       <button class="tab" onclick="switchTab('compare')">Compare Decks</button>
       <button class="tab" onclick="switchTab('import')">Import from URL</button>
       <button class="tab" onclick="switchTab('history')">History</button>
@@ -974,6 +1095,69 @@
       </div>
 
       <div class="card results" id="findcard-results"></div>
+    </div>
+
+    <!-- Collection Optimizer Tab -->
+    <div id="collection-tab" class="tab-content">
+      <div class="card">
+        <h3 style="margin-bottom: 15px;">📦 Collection Optimizer</h3>
+        <p style="color: #999; margin-bottom: 20px;">
+          Paste your card collection below, and AI will analyze your cards and build an optimized Commander deck using only cards you own!
+        </p>
+
+        <div class="form-group">
+          <label for="collection-list">Your Card Collection (one card per line, optional quantities)</label>
+          <textarea
+            id="collection-list"
+            placeholder="1 Sol Ring
+4 Lightning Bolt
+1 Thalia, Guardian of Thraben
+1 Mox Diamond
+...or just card names without quantities"
+            rows="12"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="collection-commander">Commander (optional - AI will pick one if left blank)</label>
+          <input type="text" id="collection-commander" placeholder="e.g., Atraxa, Praetors' Voice">
+        </div>
+
+        <div class="form-group">
+          <label for="collection-strategy">Preferred Strategy (optional)</label>
+          <select id="collection-strategy">
+            <option value="">Let AI decide</option>
+            <option value="aggro">Aggro - Fast, aggressive creature combat</option>
+            <option value="control">Control - Counter spells, board control</option>
+            <option value="combo">Combo - Win with card combos</option>
+            <option value="midrange">Midrange - Balanced, value-oriented</option>
+            <option value="voltron">Voltron - Single powerful creature</option>
+            <option value="tribal">Tribal - Creature type synergy</option>
+            <option value="aristocrats">Aristocrats - Sacrifice synergies</option>
+            <option value="tokens">Tokens - Go wide with creatures</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="collection-model">AI Model</label>
+          <select id="collection-model">
+            <option value="sonnet">Claude Sonnet 4.5 (Fast & Good)</option>
+            <option value="opus">Claude Opus 4.5 (Slower & Best)</option>
+          </select>
+        </div>
+
+        <button onclick="optimizeCollection()">Build Deck from Collection</button>
+      </div>
+
+      <div class="error" id="collection-error"></div>
+
+      <div class="loading" id="collection-loading">
+        <div class="spinner"></div>
+        <p>Analyzing your collection and building optimal deck...</p>
+        <p style="font-size: 0.9em; color: #999; margin-top: 10px;">This may take 30-60 seconds</p>
+      </div>
+
+      <div class="card results" id="collection-results"></div>
     </div>
 
     <!-- Compare Tab -->

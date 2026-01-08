@@ -363,6 +363,105 @@ async function findCardForDeck() {
   }
 }
 
+// Optimize collection
+async function optimizeCollection() {
+  const collectionList = document.getElementById('collection-list').value.trim();
+  const commander = document.getElementById('collection-commander').value.trim();
+  const strategy = document.getElementById('collection-strategy').value;
+  const model = document.getElementById('collection-model').value;
+
+  if (!collectionList) {
+    showError('collection-error', 'Please enter your card collection');
+    return;
+  }
+
+  hideError('collection-error');
+  hideResults('collection-results');
+  showLoading('collection-loading');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/optimize-collection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: collectionList,
+        commander: commander || null,
+        strategy: strategy || null,
+        model,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Collection optimization failed');
+    }
+
+    displayOptimizedDeck(data.deck, data.commander);
+    showResults('collection-results');
+  } catch (error) {
+    showError('collection-error', error.message);
+  } finally {
+    hideLoading('collection-loading');
+  }
+}
+
+// Display optimized deck from collection
+function displayOptimizedDeck(deck, commander) {
+  const el = document.getElementById('collection-results');
+
+  let html = `<h2>🏗️ Optimized Deck: ${escapeHtml(commander)}</h2>`;
+
+  // Strategy
+  if (deck.strategy) {
+    html += '<div class="section">';
+    html += '<h3>🎯 Strategy</h3>';
+    html += `<p>${escapeHtml(deck.strategy)}</p>`;
+    html += '</div>';
+  }
+
+  // Key synergies
+  if (deck.keySynergies) {
+    html += '<div class="section">';
+    html += '<h3>⚡ Key Synergies</h3>';
+    html += `<p>${escapeHtml(deck.keySynergies)}</p>`;
+    html += '</div>';
+  }
+
+  // Deck list
+  if (deck.mainDeck && deck.mainDeck.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>📋 Deck List (99 cards)</h3>';
+    html += '<div style="font-family: monospace; white-space: pre-wrap;">';
+    deck.mainDeck.forEach(card => {
+      html += `${wrapCardName(card)}\n`;
+    });
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // Missing cards (cards not in collection that would improve the deck)
+  if (deck.missingCards && deck.missingCards.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>💡 Upgrade Suggestions</h3>';
+    html += '<p style="color: #999; margin-bottom: 15px;">These cards would improve the deck but aren\'t in your collection:</p>';
+    html += '<ul>';
+    deck.missingCards.forEach(card => {
+      html += `<li>${wrapCardName(card)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
+
+  // Export button
+  html += '<div style="margin-top: 20px;">';
+  html += `<button onclick="exportDeckToText('${escapeHtml(commander)}', '${escapeHtml(deck.mainDeck.join('\\n'))}')">📥 Export Deck List</button>`;
+  html += '</div>';
+
+  el.innerHTML = html;
+  setupCardHoverListeners();
+}
+
 // Display built deck
 function displayBuiltDeck(deck, commander) {
   const el = document.getElementById('build-results');

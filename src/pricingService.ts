@@ -1,6 +1,5 @@
-import axios from 'axios';
+import { searchCard } from './scryfallClient.js';
 
-const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 const RATE_LIMIT_DELAY = 100;
 
 export interface CardPrice {
@@ -10,17 +9,20 @@ export interface CardPrice {
 }
 
 /**
- * Fetches price for a single card from Scryfall
+ * Fetches price for a single card from Scryfall (uses cached searchCard)
  */
 export async function getCardPrice(cardName: string): Promise<CardPrice> {
   try {
-    const response = await axios.get(`${SCRYFALL_API_BASE}/cards/named`, {
-      params: {
-        fuzzy: cardName,
-      },
-    });
+    const card = await searchCard(cardName);
 
-    const card = response.data;
+    if (!card) {
+      return {
+        name: cardName,
+        price: null,
+        priceTier: '?',
+      };
+    }
+
     const usdPrice = card.prices?.usd ? parseFloat(card.prices.usd) : null;
 
     return {

@@ -756,6 +756,154 @@ ${question}
 Answer the question directly and helpfully.`;
 }
 
+// Optimize collection endpoint
+app.post('/api/optimize-collection', async (req: any, res: any) => {
+  try {
+    const {
+      collection,
+      commander,
+      strategy,
+      model = 'sonnet',
+    } = req.body;
+
+    if (!collection) {
+      return res.status(400).json({ error: 'Collection list is required' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    // Parse collection (similar to deck parsing)
+    const collectionCards = collection
+      .split('\n')
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0 && !line.startsWith('//'))
+      .map((line: string) => {
+        // Remove quantity if present
+        const match = line.match(/^(\d+)x?\s+(.+)$/i);
+        if (match) {
+          return match[2].trim();
+        }
+        return line;
+      });
+
+    if (collectionCards.length < 50) {
+      return res.status(400).json({
+        error: 'Collection must contain at least 50 cards to build a Commander deck',
+      });
+    }
+
+    const anthropic = new Anthropic({ apiKey });
+    const modelId = model === 'opus'
+      ? 'claude-opus-4-5-20251101'
+      : 'claude-sonnet-4-5-20250929';
+
+    // Build the prompt for collection optimization
+    const prompt = buildCollectionOptimizationPrompt(
+      collectionCards,
+      commander,
+      strategy
+    );
+
+    console.log(`\n🧠 Building deck from collection (${collectionCards.length} cards) with ${model}...\n`);
+
+    const response = await anthropic.messages.create({
+      model: modelId,
+      max_tokens: 8192,
+      temperature: 0,
+      messages: [{
+        role: 'user',
+        content: prompt,
+      }],
+    });
+
+    const textContent = response.content.find((c: any) => c.type === 'text');
+    if (!textContent) {
+      throw new Error('No text response from Claude');
+    }
+
+    // Parse JSON response
+    const jsonMatch = textContent.text.match(/```json\n([\s\S]*?)\n```/);
+    if (!jsonMatch) {
+      throw new Error('Invalid response format from Claude');
+    }
+
+    const result = JSON.parse(jsonMatch[1]);
+
+    res.json({
+      commander: result.commander,
+      deck: result,
+    });
+  } catch (error: any) {
+    console.error('Collection optimization error:', error);
+    res.status(500).json({
+      error: error.message || 'Collection optimization failed',
+    });
+  }
+});
+
+function buildCollectionOptimizationPrompt(
+  collection: string[],
+  commander: string | null,
+  strategy: string | null
+): string {
+  let prompt = `You are an expert Magic: The Gathering deck builder. Analyze this collection of cards and build an optimized 100-card Commander deck.
+
+**Your Collection (${collection.length} cards):**
+${collection.join(', ')}
+
+**Requirements:**
+`;
+
+  if (commander) {
+    prompt += `- Commander: ${commander} (MUST be from the collection above)\n`;
+  } else {
+    prompt += `- Commander: Choose the best legendary creature from the collection that enables the strongest deck\n`;
+  }
+
+  if (strategy) {
+    prompt += `- Strategy: ${strategy}\n`;
+  } else {
+    prompt += `- Strategy: Choose the best strategy based on available cards\n`;
+  }
+
+  prompt += `
+- Deck must contain EXACTLY 99 cards (excluding commander)
+- ALL cards must come from the provided collection
+- Follow color identity rules (only use cards matching commander's colors)
+- Include optimal mana base from available lands
+- Prioritize synergies and card quality
+- Aim for proper mana curve and card type balance
+
+**Output Format (JSON):**
+\`\`\`json
+{
+  "commander": "Card Name",
+  "strategy": "Brief description of the deck's strategy and gameplan",
+  "keySynergies": "2-3 sentences about the deck's main synergies and win conditions",
+  "mainDeck": [
+    "Card Name 1",
+    "Card Name 2",
+    ...99 cards total
+  ],
+  "missingCards": [
+    "Optional: 3-5 cards that would improve this deck but aren't in the collection"
+  ]
+}
+\`\`\`
+
+**Important:**
+- Use ONLY cards from the provided collection
+- Each card can only appear once (except basic lands if available)
+- Be strategic about card selection - quality over quantity
+- Make sure the deck is functional and has clear win conditions
+- If the collection lacks certain essentials (e.g., ramp, removal), work with what's available`;
+
+  return prompt;
+}
+
 app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════════════');
   console.log('           🃏 MTG Deck Analyzer Web Interface 🃏');
@@ -765,6 +913,7 @@ app.listen(PORT, () => {
   console.log('');
   console.log('Features:');
   console.log('  • Deck analysis with Claude 4.5');
+  console.log('  • Collection Optimizer (build decks from your cards)');
   console.log('  • Novelty Mode (Anti-Meta suggestions)');
   console.log('  • Commander Spellbook combo detection');
   console.log('  • EDHREC popularity scoring');
