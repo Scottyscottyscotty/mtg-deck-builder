@@ -751,6 +751,7 @@ ${question}
 - Be concise but thorough
 - Use your Magic knowledge to provide strategic insights
 - Only suggest REAL Magic cards (do not hallucinate cards)
+- **DO NOT include any URLs or links in your response** - just mention card names (the UI will handle previews and shopping links automatically)
 
 Answer the question directly and helpfully.`;
 }

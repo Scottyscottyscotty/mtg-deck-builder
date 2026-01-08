@@ -746,6 +746,58 @@ function displayAnalysisInElement(analysis, elementId) {
   html += '</ul>';
   html += '</div>';
 
+  // Weak Point Analysis
+  if (analysis.weakPoints && analysis.weakPoints.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🔍 Weak Point Analysis</h3>';
+    const severityColors = {
+      critical: '#ff6b6b',
+      high: '#ff922b',
+      moderate: '#ffd43b',
+      low: '#51cf66'
+    };
+    const severityEmoji = {
+      critical: '🔴',
+      high: '🟠',
+      moderate: '🟡',
+      low: '🟢'
+    };
+    analysis.weakPoints.forEach((wp) => {
+      const color = severityColors[wp.severity] || '#999';
+      const emoji = severityEmoji[wp.severity] || '⚪';
+      html += '<div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; border-left: 3px solid ' + color + ';">';
+      html += `<div style="font-weight: bold; margin-bottom: 5px;">${emoji} ${escapeHtml(wp.category)} <span style="color: ${color};">(${wp.severity.toUpperCase()})</span></div>`;
+      html += `<div style="margin-bottom: 3px;"><strong>Issue:</strong> ${escapeHtml(wp.issue)}</div>`;
+      html += `<div><strong>Impact:</strong> ${escapeHtml(wp.impact)}</div>`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Upgrade Path Analysis
+  if (analysis.upgradePathAnalysis) {
+    html += '<div class="section">';
+    html += '<h3>🛠️ Upgrade Path Roadmap</h3>';
+    html += '<div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">';
+    html += `<div style="font-size: 16px; font-weight: bold; color: #667eea; margin-bottom: 5px;">🎯 PRIMARY FOCUS</div>`;
+    html += `<div style="font-size: 14px;">${escapeHtml(analysis.upgradePathAnalysis.primaryWeakPoint)}</div>`;
+    html += '</div>';
+
+    analysis.upgradePathAnalysis.budgetBreakpoints.forEach((tier) => {
+      html += '<div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid #51cf66;">';
+      html += `<div style="font-weight: bold; color: #51cf66; margin-bottom: 8px;">💰 ${escapeHtml(tier.budget)}</div>`;
+      html += `<div style="margin-bottom: 8px;"><strong>Expected Impact:</strong> ${escapeHtml(tier.expectedImpact)}</div>`;
+      html += '<div><strong>Recommended Cards:</strong></div>';
+      html += '<ul style="margin: 5px 0 0 20px;">';
+      tier.recommendedUpgrades.forEach((card) => {
+        html += `<li>${wrapCardName(card)}</li>`;
+      });
+      html += '</ul>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
   // Card suggestions
   if (analysis.cardSuggestions && analysis.cardSuggestions.length > 0) {
     html += '<div class="section">';
@@ -904,6 +956,58 @@ function displayAnalysis(analysis) {
   });
   html += '</ul>';
   html += '</div>';
+
+  // Weak Point Analysis
+  if (analysis.weakPoints && analysis.weakPoints.length > 0) {
+    html += '<div class="section">';
+    html += '<h3>🔍 Weak Point Analysis</h3>';
+    const severityColors = {
+      critical: '#ff6b6b',
+      high: '#ff922b',
+      moderate: '#ffd43b',
+      low: '#51cf66'
+    };
+    const severityEmoji = {
+      critical: '🔴',
+      high: '🟠',
+      moderate: '🟡',
+      low: '🟢'
+    };
+    analysis.weakPoints.forEach((wp) => {
+      const color = severityColors[wp.severity] || '#999';
+      const emoji = severityEmoji[wp.severity] || '⚪';
+      html += '<div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; border-left: 3px solid ' + color + ';">';
+      html += `<div style="font-weight: bold; margin-bottom: 5px;">${emoji} ${escapeHtml(wp.category)} <span style="color: ${color};">(${wp.severity.toUpperCase()})</span></div>`;
+      html += `<div style="margin-bottom: 3px;"><strong>Issue:</strong> ${escapeHtml(wp.issue)}</div>`;
+      html += `<div><strong>Impact:</strong> ${escapeHtml(wp.impact)}</div>`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Upgrade Path Analysis
+  if (analysis.upgradePathAnalysis) {
+    html += '<div class="section">';
+    html += '<h3>🛠️ Upgrade Path Roadmap</h3>';
+    html += '<div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">';
+    html += `<div style="font-size: 16px; font-weight: bold; color: #667eea; margin-bottom: 5px;">🎯 PRIMARY FOCUS</div>`;
+    html += `<div style="font-size: 14px;">${escapeHtml(analysis.upgradePathAnalysis.primaryWeakPoint)}</div>`;
+    html += '</div>';
+
+    analysis.upgradePathAnalysis.budgetBreakpoints.forEach((tier) => {
+      html += '<div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid #51cf66;">';
+      html += `<div style="font-weight: bold; color: #51cf66; margin-bottom: 8px;">💰 ${escapeHtml(tier.budget)}</div>`;
+      html += `<div style="margin-bottom: 8px;"><strong>Expected Impact:</strong> ${escapeHtml(tier.expectedImpact)}</div>`;
+      html += '<div><strong>Recommended Cards:</strong></div>';
+      html += '<ul style="margin: 5px 0 0 20px;">';
+      tier.recommendedUpgrades.forEach((card) => {
+        html += `<li>${wrapCardName(card)}</li>`;
+      });
+      html += '</ul>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
 
   // Commander Spellbook Combos
   if (analysis.spellbookCombos && analysis.spellbookCombos.length > 0) {

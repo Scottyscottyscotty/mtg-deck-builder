@@ -77,6 +77,47 @@ function generateMarkdown(analysis: DeckAnalysis, cards: DeckCard[]): string {
   });
   lines.push('');
 
+  // Weak Point Analysis
+  if (analysis.weakPoints && analysis.weakPoints.length > 0) {
+    lines.push('## Weak Point Analysis');
+    lines.push('');
+    const severityEmoji: Record<string, string> = {
+      critical: '🔴',
+      high: '🟠',
+      moderate: '🟡',
+      low: '🟢'
+    };
+    analysis.weakPoints.forEach((wp) => {
+      const emoji = severityEmoji[wp.severity] || '⚪';
+      lines.push(`### ${emoji} ${wp.category} (${wp.severity.toUpperCase()})`);
+      lines.push('');
+      lines.push(`**Issue:** ${wp.issue}`);
+      lines.push('');
+      lines.push(`**Impact:** ${wp.impact}`);
+      lines.push('');
+    });
+  }
+
+  // Upgrade Path Analysis
+  if (analysis.upgradePathAnalysis) {
+    lines.push('## 🛠️ Upgrade Path Roadmap');
+    lines.push('');
+    lines.push(`**🎯 PRIMARY FOCUS:** ${analysis.upgradePathAnalysis.primaryWeakPoint}`);
+    lines.push('');
+
+    analysis.upgradePathAnalysis.budgetBreakpoints.forEach(tier => {
+      lines.push(`### 💰 ${tier.budget}`);
+      lines.push('');
+      lines.push(`**Expected Impact:** ${tier.expectedImpact}`);
+      lines.push('');
+      lines.push('**Recommended Cards:**');
+      tier.recommendedUpgrades.forEach(card => {
+        lines.push(`- ${card}`);
+      });
+      lines.push('');
+    });
+  }
+
   // Existing Combos
   if (analysis.existingCombos.length > 0) {
     lines.push('## Existing Combos & Synergies');

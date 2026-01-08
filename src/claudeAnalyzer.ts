@@ -43,14 +43,27 @@ Please analyze this deck and provide:
 
 6. **Potential Combos**: Suggest new combos or synergies that could be added with different card choices.
 
-7. **Card Suggestions**: Recommend 8-12 specific cards that would improve this deck across DIFFERENT PRICE RANGES:
+7. **Weak Point Analysis**: Identify and prioritize the deck's critical deficiencies:
+   - Analyze key categories: Mana Base, Ramp, Card Draw, Removal, Win Conditions, Protection
+   - For each weak point, assess severity (critical/high/moderate/low) and gameplay impact
+   - **CRITICAL**: Focus on objective weaknesses (e.g., "22 tapped lands" = critical mana base issue)
+   - Identify the PRIMARY weak point that most limits the deck's performance
+
+8. **Upgrade Path Analysis**: Create a budget-optimized upgrade roadmap:
+   - Define upgrade priorities for different budget tiers ($0-25, $25-75, $75-150, $150+)
+   - **PRIORITIZE THE PRIMARY WEAK POINT** - suggest upgrades that fix it first
+   - For example: If mana base is critical, budget tier should focus on untapped lands
+   - List specific cards for each tier that address the most impactful weaknesses
+   - Explain expected impact (e.g., "Fixes mana consistency, enables turn 3-4 plays")
+
+9. **Card Suggestions**: Recommend 8-12 specific cards that would improve this deck across DIFFERENT PRICE RANGES:
    - Include budget options (under $5)
    - Include mid-range options ($5-25)
    - Include premium/expensive options ($25+)
 
    For each card, provide detailed reasoning explaining why it fits the deck. Try to suggest cards at various price points so players have options regardless of budget.
 
-8. **Bracket Rating**: Rate this deck on the Commander Bracket system (1-4):
+10. **Bracket Rating**: Rate this deck on the Commander Bracket system (1-4):
    - Bracket 1: Precon level, very casual
    - Bracket 2: Optimized casual, some strong cards
    - Bracket 3: High power, efficient combos, strong interaction
@@ -58,7 +71,7 @@ Please analyze this deck and provide:
 
    Provide the number and explain your reasoning.
 
-9. **Overall Assessment**: A 2-3 paragraph summary of the deck's identity, play pattern, and overall power level.
+11. **Overall Assessment**: A 2-3 paragraph summary of the deck's identity, play pattern, and overall power level.
 
 ## Output Format
 
@@ -71,6 +84,40 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
   "weaknesses": ["string", "string", ...],
   "existingCombos": ["string", "string", ...],
   "potentialCombos": ["string", "string", ...],
+  "weakPoints": [
+    {
+      "category": "Mana Base" | "Ramp" | "Card Draw" | "Removal" | "Win Conditions" | "Protection",
+      "severity": "critical" | "high" | "moderate" | "low",
+      "issue": "description of the problem",
+      "impact": "how this affects gameplay"
+    },
+    ...
+  ],
+  "upgradePathAnalysis": {
+    "primaryWeakPoint": "the #1 thing to fix",
+    "budgetBreakpoints": [
+      {
+        "budget": "$0-25",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      },
+      {
+        "budget": "$25-75",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      },
+      {
+        "budget": "$75-150",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      },
+      {
+        "budget": "$150+",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      }
+    ]
+  },
   "cardSuggestions": [
     {"card": "Card Name", "reasoning": "why this card fits"},
     ...

@@ -67,4 +67,20 @@ export interface DeckAnalysis {
     isPartial: boolean;
     missingCategories?: string[];
   };
+
+  // Weak point analysis and upgrade optimization
+  weakPoints?: Array<{
+    category: string; // e.g., "Mana Base", "Ramp", "Card Draw", "Removal", "Win Conditions"
+    severity: 'critical' | 'high' | 'moderate' | 'low';
+    issue: string; // Description of the problem
+    impact: string; // How this affects gameplay
+  }>;
+  upgradePathAnalysis?: {
+    primaryWeakPoint: string; // The #1 thing to fix
+    budgetBreakpoints: Array<{
+      budget: string; // e.g., "$0-25", "$25-75", "$75-150", "$150+"
+      recommendedUpgrades: string[]; // Card names prioritized for this budget
+      expectedImpact: string; // What improvement to expect
+    }>;
+  };
 }

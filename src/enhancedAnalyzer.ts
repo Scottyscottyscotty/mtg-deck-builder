@@ -301,7 +301,20 @@ ${deckList}`;
   prompt += `5. **Existing Combos**: Note any synergies or combos you observe\n\n`;
   prompt += `6. **Potential Combos**: Suggest new combo lines\n\n`;
 
-  prompt += `7. **Card Suggestions**: Recommend 10-15 cards across different price ranges:\n`;
+  prompt += `7. **Weak Point Analysis**: Identify and prioritize the deck's critical deficiencies:\n`;
+  prompt += `   - Analyze key categories: Mana Base, Ramp, Card Draw, Removal, Win Conditions, Protection\n`;
+  prompt += `   - For each weak point, assess severity (critical/high/moderate/low) and gameplay impact\n`;
+  prompt += `   - **CRITICAL**: Focus on objective weaknesses (e.g., "22 tapped lands" = critical mana base issue)\n`;
+  prompt += `   - Identify the PRIMARY weak point that most limits the deck's performance\n\n`;
+
+  prompt += `8. **Upgrade Path Analysis**: Create a budget-optimized upgrade roadmap:\n`;
+  prompt += `   - Define upgrade priorities for different budget tiers ($0-25, $25-75, $75-150, $150+)\n`;
+  prompt += `   - **PRIORITIZE THE PRIMARY WEAK POINT** - suggest upgrades that fix it first\n`;
+  prompt += `   - For example: If mana base is critical, budget tier should focus on untapped lands\n`;
+  prompt += `   - List specific cards for each tier that address the most impactful weaknesses\n`;
+  prompt += `   - Explain expected impact (e.g., "Fixes mana consistency, enables turn 3-4 plays")\n\n`;
+
+  prompt += `9. **Card Suggestions**: Recommend 10-15 cards across different price ranges:\n`;
   if (novelty >= 75) {
     prompt += `   - PRIORITY: Focus on spicy, underplayed cards (<25% inclusion rate)\n`;
     prompt += `   - Avoid mainstream staples unless absolutely critical\n`;
@@ -315,8 +328,13 @@ ${deckList}`;
     prompt += `   - Include budget (<$5), mid-range ($5-25), and premium ($25+) options\n`;
   }
 
-  prompt += `\n8. **Bracket Rating**: Rate 1-4 with reasoning\n\n`;
-  prompt += `9. **Overall Assessment**: 2-3 paragraph summary\n\n`;
+  prompt += `\n10. **Bracket Rating**: Rate this deck on the Commander Bracket system (1-4):\n`;
+  prompt += `   - Bracket 1: Precon level, very casual\n`;
+  prompt += `   - Bracket 2: Optimized casual, some strong cards\n`;
+  prompt += `   - Bracket 3: High power, efficient combos, strong interaction\n`;
+  prompt += `   - Bracket 4: cEDH level, optimized for competitive play\n`;
+  prompt += `\n   Provide the number and explain your reasoning.\n\n`;
+  prompt += `11. **Overall Assessment**: 2-3 paragraph summary\n\n`;
 
   prompt += `## Output Format\n\nRespond with ONLY valid JSON (no markdown, no code blocks):\n\n`;
   prompt += `{
@@ -326,6 +344,40 @@ ${deckList}`;
   "weaknesses": ["string", ...],
   "existingCombos": ["string", ...],
   "potentialCombos": ["string", ...],
+  "weakPoints": [
+    {
+      "category": "Mana Base" | "Ramp" | "Card Draw" | "Removal" | "Win Conditions" | "Protection",
+      "severity": "critical" | "high" | "moderate" | "low",
+      "issue": "description of the problem",
+      "impact": "how this affects gameplay"
+    },
+    ...
+  ],
+  "upgradePathAnalysis": {
+    "primaryWeakPoint": "the #1 thing to fix",
+    "budgetBreakpoints": [
+      {
+        "budget": "$0-25",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      },
+      {
+        "budget": "$25-75",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      },
+      {
+        "budget": "$75-150",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      },
+      {
+        "budget": "$150+",
+        "recommendedUpgrades": ["Card Name 1", "Card Name 2", ...],
+        "expectedImpact": "what improvement to expect"
+      }
+    ]
+  },
   "cardSuggestions": [
     {
       "card": "Card Name",
