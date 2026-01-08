@@ -241,6 +241,13 @@ ${deckList}`;
   } else {
     prompt += `- This is a COLORLESS deck - suggest only colorless cards and lands\n`;
   }
+  prompt += `- **LANDS**: Dual lands, tri-lands, etc. must ONLY produce colors in ${colorSymbols}\n`;
+  if (colorIdentity.length === 2) {
+    const [c1, c2] = colorIdentity;
+    const colorNames = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
+    prompt += `  - Example: For ${colorSymbols} deck, you CAN suggest lands that produce ${c1} and/or ${c2}\n`;
+    prompt += `  - Example: For ${colorSymbols} deck, you CANNOT suggest lands with other color combinations\n`;
+  }
   prompt += `- Double-check EVERY suggestion's color identity before including it\n`;
   prompt += `- If you're unsure about a card's colors, DO NOT suggest it\n`;
 
@@ -313,6 +320,8 @@ ${deckList}`;
   prompt += `   - For example: If mana base is critical, budget tier should focus on untapped lands\n`;
   prompt += `   - List specific cards for each tier that address the most impactful weaknesses\n`;
   prompt += `   - Explain expected impact (e.g., "Fixes mana consistency, enables turn 3-4 plays")\n`;
+  prompt += `   - **CRITICAL REMINDER**: ALL upgrade suggestions MUST match ${colorSymbols} color identity\n`;
+  prompt += `   - When suggesting lands, ensure they ONLY produce colors in ${colorSymbols}\n`;
 
   // Apply novelty preferences to upgrade roadmap
   if (novelty >= 75) {

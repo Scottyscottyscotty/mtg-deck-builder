@@ -18,6 +18,14 @@ export async function analyzeDeck(
 
   console.log(`\n🧠 Analyzing deck with ${model === 'opus' ? 'Claude Opus 4.5' : 'Claude Sonnet 4.5'}...\n`);
 
+  // Calculate deck color identity for accurate suggestions
+  const deckColorIdentity = calculateColorIdentity(cards);
+  const colorString = deckColorIdentity.length > 0
+    ? deckColorIdentity.sort().join('').replace(/W/g, 'White').replace(/U/g, 'Blue').replace(/B/g, 'Black').replace(/R/g, 'Red').replace(/G/g, 'Green')
+    : 'Colorless';
+  const colorSymbols = deckColorIdentity.length > 0 ? deckColorIdentity.sort().join('') : 'Colorless';
+  console.log(`🎨 Deck Color Identity: ${colorSymbols}\n`);
+
   // Build the deck representation for Claude
   const deckList = formatDeckForClaude(cards);
 
@@ -26,6 +34,22 @@ export async function analyzeDeck(
 ## Deck List
 
 ${deckList}
+
+## ⚠️ CRITICAL COLOR IDENTITY CONSTRAINT ⚠️
+
+This deck's color identity is: **${colorSymbols}** (${colorString})
+
+**ABSOLUTE REQUIREMENT:** ALL card suggestions MUST match this color identity.
+- A card's color identity includes ALL mana symbols in its mana cost AND rules text.
+- You CANNOT suggest cards with colors outside of: ${colorSymbols}
+${deckColorIdentity.length > 0
+  ? `- Valid color identities: ${colorSymbols} (exact match) or any subset (e.g., ${deckColorIdentity[0]} only)`
+  : '- This is a COLORLESS deck - suggest only colorless cards and lands'}
+- **LANDS**: Dual lands, tri-lands, etc. must ONLY produce colors in ${colorSymbols}
+  - Example: If deck is Red-Green (RG), you CAN suggest Stomping Ground, Cragcrown Pathway
+  - Example: If deck is Red-Green (RG), you CANNOT suggest Blood Crypt (BR), Overgrown Tomb (BG)
+- Double-check EVERY suggestion's color identity before including it
+- If you're unsure about a card's colors, DO NOT suggest it
 
 ## Analysis Requirements
 
@@ -55,6 +79,8 @@ Please analyze this deck and provide:
    - For example: If mana base is critical, budget tier should focus on untapped lands
    - List specific cards for each tier that address the most impactful weaknesses
    - Explain expected impact (e.g., "Fixes mana consistency, enables turn 3-4 plays")
+   - **CRITICAL REMINDER**: ALL upgrade suggestions MUST match ${colorSymbols} color identity
+   - When suggesting lands, ensure they ONLY produce colors in ${colorSymbols}
 
 9. **Card Suggestions**: Recommend 8-12 specific cards that would improve this deck across DIFFERENT PRICE RANGES:
    - Include budget options (under $5)
@@ -214,4 +240,24 @@ function formatDeckForClaude(cards: DeckCard[]): string {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Calculates the color identity of the deck
+ * Color identity = union of all color_identity fields from all cards
+ */
+function calculateColorIdentity(cards: DeckCard[]): string[] {
+  const colors = new Set<string>();
+
+  for (const { card } of cards) {
+    if (card && card.color_identity) {
+      card.color_identity.forEach(color => colors.add(color));
+    }
+  }
+
+  // Return sorted array of color letters: W, U, B, R, G
+  return Array.from(colors).sort((a, b) => {
+    const order = 'WUBRG';
+    return order.indexOf(a) - order.indexOf(b);
+  });
 }
