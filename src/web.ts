@@ -457,14 +457,15 @@ function buildDeckPrompt(commander: string, novelty: number): string {
 **ABSOLUTE REQUIREMENT:** ALL cards in this deck MUST match ${commander}'s color identity.
 
 **COLOR IDENTITY RULES:**
-- A card's color identity includes ALL mana symbols in its mana cost AND rules text
-- You can ONLY include cards whose colors are a subset of the commander's colors
-- Lands that produce mana MUST only produce colors in the commander's identity
+- A card's color identity = ALL mana symbols in its mana cost + rules text
+- **CORE RULE**: A card can ONLY be included if EVERY color in the card is present in the commander's colors
+- In other words: The card's colors must be a subset of the commander's colors
 
 **CRITICAL EXAMPLES:**
-- If ${commander} is GREEN only: Can include Sol Ring, green cards, colorless cards, forests, ANY lands that produce ONLY green/colorless mana
-- If ${commander} is WHITE + BLACK: Can include white cards, black cards, multicolor WB cards, colorless cards, lands producing W/B/colorless
-- If ${commander} is 5-COLOR: Can include cards of any color
+- If ${commander} is **MONO-GREEN**: Can include colorless, green-only cards. CANNOT include any card with W/U/B/R
+- If ${commander} is **BLACK + WHITE**: Can include colorless, black, white, OR black+white cards. CANNOT include any card with G/U/R
+- If ${commander} is **RED + GREEN + BLUE**: Can include colorless, R, G, U, RG, RU, GU, or RGB cards. CANNOT include any card with W/B
+- If ${commander} is **5-COLOR (WUBRG)**: Can include cards of ANY color combination
 
 **VERIFICATION STEPS:**
 1. Determine ${commander}'s exact color identity
@@ -537,14 +538,15 @@ You need to suggest **${cardsNeeded} cards** to bring this deck to a total of 99
 **ABSOLUTE REQUIREMENT:** ALL suggested cards MUST match ${commander}'s color identity.
 
 **COLOR IDENTITY RULES:**
-- A card's color identity includes ALL mana symbols in its mana cost AND rules text
-- You can ONLY suggest cards whose colors are a subset of the commander's colors
-- Lands that produce mana MUST only produce colors in the commander's identity
+- A card's color identity = ALL mana symbols in its mana cost + rules text
+- **CORE RULE**: A card can ONLY be suggested if EVERY color in the card is present in the commander's colors
+- In other words: The card's colors must be a subset of the commander's colors
 
 **CRITICAL EXAMPLES:**
-- If ${commander} is RED + BLUE: Can suggest blue cards, red cards, UR cards, colorless cards, lands producing R/U/colorless
-- If ${commander} is MONO-WHITE: Can suggest white cards, colorless cards, lands producing W/colorless (NO other colors)
-- If ${commander} is GREEN + BLACK + BLUE: Can suggest any combination of G/B/U cards, but NO red or white cards
+- If ${commander} is **MONO-WHITE**: Can suggest colorless, white-only cards. CANNOT suggest any card with U/B/R/G
+- If ${commander} is **RED + BLUE**: Can suggest colorless, red, blue, OR red+blue cards. CANNOT suggest any card with W/B/G
+- If ${commander} is **GREEN + BLACK + BLUE**: Can suggest colorless, G, B, U, GB, GU, BU, or GBU cards. CANNOT suggest any card with W/R
+- If ${commander} is **5-COLOR (WUBRG)**: Can suggest cards of ANY color combination
 
 **VERIFICATION STEPS:**
 1. Determine ${commander}'s exact color identity
@@ -612,23 +614,30 @@ function buildFindCardPrompt(cardName: string, history: any[]): string {
 
 Before recommending ANY deck, you MUST verify "${cardName}" matches the deck's color identity.
 
-**COLOR IDENTITY INCLUDES:**
-- ALL mana symbols in the card's mana cost
-- ALL mana symbols in the card's rules text
-- Color indicator (for cards with no mana cost)
+**COLOR IDENTITY DEFINITION:**
+- A card's color identity = ALL mana symbols in mana cost + rules text + color indicator
+
+**CORE RULE:**
+- A card can ONLY go in a deck if EVERY color in the card is present in the deck's color identity
+- In other words: The card's colors must be a subset of the deck's colors
 
 **CRITICAL EXAMPLES:**
-- **Sylvan Safekeeper** (costs {G}) = GREEN identity → Can ONLY go in decks with Green (e.g., G, GW, GU, GUW, etc.)
-- **Anguished Unmaking** (costs {1}{W}{B}) = WHITE + BLACK identity → Can ONLY go in decks with BOTH W and B (e.g., WB, WBG, WBR, etc.)
-- **Kenrith, the Returned King** (has {W}{U}{B}{R}{G} in text) = 5-COLOR identity → Can ONLY go in 5-color decks
-- **Sol Ring** (colorless, no color symbols) = COLORLESS → Can go in ANY deck
-- **Esper Charm** (costs {W}{U}{B}) = WHITE + BLUE + BLACK → Can ONLY go in decks with W, U, and B
+- **Sylvan Safekeeper** (costs {G}) = GREEN identity
+  - ✅ Can go in: Mono-green, GW, GU, GB, GR, any deck with G
+  - ❌ Cannot go in: Mono-red, Mono-black, WB, UR (no green in deck)
+
+- **Anguished Unmaking** (costs {1}{W}{B}) = WHITE + BLACK identity
+  - ✅ Can go in: WB, WBG, WBR, WBU, WUBRG (has both W and B)
+  - ❌ Cannot go in: Mono-white, Mono-black, WU, BR (missing either W or B)
+
+- **Sol Ring** (colorless) = COLORLESS identity
+  - ✅ Can go in: ANY deck (no color requirements)
 
 **STEP-BY-STEP VERIFICATION:**
-1. Look up "${cardName}" and identify ALL mana symbols in its cost and text
+1. Look up "${cardName}" and identify its exact color identity
 2. For EACH deck, determine the commander's color identity
-3. If "${cardName}" has ANY color not in the commander's colors, REJECT that deck
-4. Only recommend decks where "${cardName}"'s colors are a subset of the commander's colors
+3. Check: Does the deck have EVERY color that "${cardName}" has?
+4. If YES → deck is a match. If NO → REJECT that deck
 
 **IF "${cardName}" DOES NOT MATCH A DECK'S COLOR IDENTITY, DO NOT RECOMMEND THAT DECK.**
 
@@ -837,14 +846,15 @@ ${question}
 **IF you suggest ANY cards, they MUST match ${commander ? commander + "'s" : "the deck's"} color identity.**
 
 **COLOR IDENTITY RULES:**
-- A card's color identity includes ALL mana symbols in its mana cost AND rules text
-- You can ONLY suggest cards whose colors are a subset of the ${commander ? "commander's" : "deck's"} colors
-- Lands that produce mana MUST only produce colors in the color identity
+- A card's color identity = ALL mana symbols in mana cost + rules text
+- **CORE RULE**: A card can ONLY be suggested if EVERY color in the card is present in the ${commander ? "commander's" : "deck's"} colors
+- In other words: The card's colors must be a subset of the ${commander ? "commander's" : "deck's"} colors
 
 **CRITICAL EXAMPLES:**
-- If ${commander || "the commander"} is BLUE + RED: Can suggest U cards, R cards, UR cards, colorless cards, lands producing U/R/colorless
-- If ${commander || "the commander"} is MONO-GREEN: Can suggest green cards, colorless cards, lands producing G/colorless (NO other colors)
-- If ${commander || "the commander"} is 5-COLOR: Can suggest cards of any color
+- If ${commander || "the commander"} is **MONO-GREEN**: Can suggest colorless, green-only cards. CANNOT suggest any card with W/U/B/R
+- If ${commander || "the commander"} is **BLUE + RED**: Can suggest colorless, blue, red, OR blue+red cards. CANNOT suggest any card with W/B/G
+- If ${commander || "the commander"} is **WHITE + BLACK + GREEN**: Can suggest colorless, W, B, G, WB, WG, BG, or WBG cards. CANNOT suggest any card with U/R
+- If ${commander || "the commander"} is **5-COLOR (WUBRG)**: Can suggest cards of ANY color combination
 
 **BEFORE suggesting ANY card:**
 1. Determine ${commander ? commander + "'s" : "the deck's"} exact color identity
@@ -970,14 +980,15 @@ ${collection.join(', ')}
 **ABSOLUTE REQUIREMENT:** ALL cards in the deck MUST match the commander's color identity.
 
 **COLOR IDENTITY RULES:**
-- A card's color identity includes ALL mana symbols in its mana cost AND rules text
-- You can ONLY include cards whose colors are a subset of the commander's colors
-- Lands that produce mana MUST only produce colors in the commander's identity
+- A card's color identity = ALL mana symbols in mana cost + rules text
+- **CORE RULE**: A card can ONLY be included if EVERY color in the card is present in the commander's colors
+- In other words: The card's colors must be a subset of the commander's colors
 
 **CRITICAL EXAMPLES:**
-- If commander is WHITE + BLUE: Can include W cards, U cards, WU cards, colorless cards, lands producing W/U/colorless
-- If commander is MONO-BLACK: Can include black cards, colorless cards, lands producing B/colorless (NO other colors)
-- If commander is 5-COLOR: Can include cards of any color
+- If commander is **MONO-BLACK**: Can include colorless, black-only cards. CANNOT include any card with W/U/R/G
+- If commander is **WHITE + BLUE**: Can include colorless, white, blue, OR white+blue cards. CANNOT include any card with B/R/G
+- If commander is **RED + GREEN + WHITE**: Can include colorless, R, G, W, RG, RW, GW, or RGW cards. CANNOT include any card with U/B
+- If commander is **5-COLOR (WUBRG)**: Can include cards of ANY color combination
 
 **VERIFICATION STEPS:**
 1. Determine the commander's exact color identity
