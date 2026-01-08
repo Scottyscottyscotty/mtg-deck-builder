@@ -96,24 +96,22 @@
 
     .tabs {
       display: flex;
-      gap: 8px;
+      gap: 5px;
       margin-bottom: 25px;
       flex-wrap: wrap;
-      border-bottom: 1px solid #ff9500;
-      padding-bottom: 10px;
     }
 
     .tab {
-      padding: 10px 20px;
+      padding: 8px 16px;
       background: transparent;
       border: 1px solid #663300;
       cursor: pointer;
       transition: all 0.1s;
-      font-size: 0.95em;
+      font-size: 0.85em;
       color: #cc7700;
       font-family: 'Courier Prime', monospace;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       font-weight: 700;
     }
 
@@ -1121,28 +1119,22 @@
 <body>
   <div class="container">
     <header>
-      <h1>▄▄▄█████▓ ▓█████  ██▀███   ███▄ ▄███▓ ██▓ ███▄    █  ▄▄▄       ██▓    </h1>
-      <h1>▓  ██▒ ▓▒ ▓█   ▀ ▓██ ▒ ██▒▓██▒▀█▀ ██▒▓██▒ ██ ▀█   █ ▒████▄    ▓██▒    </h1>
-      <h1>▒ ▓██░ ▒░ ▒███   ▓██ ░▄█ ▒▓██    ▓██░▒██▒▓██  ▀█ ██▒▒██  ▀█▄  ▒██░    </h1>
-      <h1>░ ▓██▓ ░  ▒▓█  ▄ ▒██▀▀█▄  ▒██    ▒██ ░██░▓██▒  ▐▌██▒░██▄▄▄▄██ ▒██░    </h1>
-      <h1>  ▒██▒ ░  ░▒████▒░██▓ ▒██▒▒██▒   ░██▒░██░▒██░   ▓██░ ▓█   ▓██▒░██████▒</h1>
-      <h1>  ▒ ░░    ░░ ▒░ ░░ ▒▓ ░▒▓░░ ▒░   ░  ░░▓  ░ ▒░   ▒ ▒  ▒▒   ▓▒█░░ ▒░▓  ░</h1>
-      <h1>    ░      ░ ░  ░  ░▒ ░ ▒░░  ░      ░ ▒ ░░ ░░   ░ ▒░  ▒   ▒▒ ░░ ░ ▒  ░</h1>
-      <h1>  ░          ░     ░░   ░ ░      ░    ▒ ░   ░   ░ ░   ░   ▒     ░ ░   </h1>
-      <h1>             ░  ░   ░            ░    ░           ░       ░  ░    ░  ░</h1>
-      <p class="subtitle">[ MTG DECK ANALYZER v2.0 ] - CLAUDE 4.5 AI SYSTEM - SCRYFALL DATABASE</p>
-      <p class="subtitle" style="margin-top: 5px; font-size: 0.85em;">TERMINAL ACCESS GRANTED - TYPE 'HELP' FOR COMMAND LIST</p>
+      <h1 style="font-size: 3em; letter-spacing: 8px; margin-bottom: 15px;">
+        ═══ TERMINAL ═══
+      </h1>
+      <p class="subtitle">[ MTG DECK ANALYZER v2.0 ]</p>
+      <p class="subtitle" style="margin-top: 5px;">CLAUDE 4.5 AI SYSTEM :: SCRYFALL DATABASE</p>
     </header>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('analyze')">Analyze Deck</button>
-      <button class="tab" onclick="switchTab('build')">Build Me a Deck</button>
-      <button class="tab" onclick="switchTab('complete')">Complete Partial Deck</button>
-      <button class="tab" onclick="switchTab('dropin')">Drop In</button>
-      <button class="tab" onclick="switchTab('findcard')">Find Card</button>
-      <button class="tab" onclick="switchTab('collection')">Collection Optimizer</button>
-      <button class="tab" onclick="switchTab('compare')">Compare Decks</button>
-      <button class="tab" onclick="switchTab('import')">Import from URL</button>
+      <button class="tab active" onclick="switchTab('analyze')">Analyze</button>
+      <button class="tab" onclick="switchTab('build')">Build</button>
+      <button class="tab" onclick="switchTab('complete')">Complete</button>
+      <button class="tab" onclick="switchTab('dropin')">Drop-In</button>
+      <button class="tab" onclick="switchTab('findcard')">Find</button>
+      <button class="tab" onclick="switchTab('collection')">Collection</button>
+      <button class="tab" onclick="switchTab('compare')">Compare</button>
+      <button class="tab" onclick="switchTab('import')">Import</button>
       <button class="tab" onclick="switchTab('history')">History</button>
     </div>
 

@@ -1007,10 +1007,10 @@ function displayAnalysis(analysis) {
 
   // Export button dropdown
   html += '<div style="position: relative;">';
-  html += '<button onclick="toggleExportMenu()" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; gap: 8px;">';
+  html += '<button onclick="toggleExportMenu()" style="padding: 10px 20px; background: #000; color: #ff9500; border: 2px solid #ff9500; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 10px rgba(255, 149, 0, 0.3); text-shadow: 0 0 5px rgba(255, 149, 0, 0.5);">';
   html += '📥 Export Deck';
   html += '</button>';
-  html += '<div id="export-menu" style="display: none; position: absolute; right: 0; top: 45px; background: rgba(30, 30, 50, 0.98); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100;">';
+  html += '<div id="export-menu" style="display: none; position: absolute; right: 0; top: 45px; background: #000; border: 2px solid #ff9500; min-width: 200px; box-shadow: 0 0 20px rgba(255, 149, 0, 0.5); z-index: 100;">';
   html += '<div style="padding: 8px 0;">';
   html += '<button onclick="exportDeck(\'text\')" class="export-option">📄 Plain Text</button>';
   html += '<button onclick="exportDeck(\'moxfield\')" class="export-option">🦊 Moxfield</button>';
