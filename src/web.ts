@@ -452,6 +452,26 @@ function buildDeckPrompt(commander: string, novelty: number): string {
 
   return `You are an expert Magic: The Gathering deck builder. Build a complete 99-card Commander deck for ${commander}.
 
+## ⚠️ CRITICAL: COLOR IDENTITY RULES ⚠️
+
+**ABSOLUTE REQUIREMENT:** ALL cards in this deck MUST match ${commander}'s color identity.
+
+**COLOR IDENTITY RULES:**
+- A card's color identity includes ALL mana symbols in its mana cost AND rules text
+- You can ONLY include cards whose colors are a subset of the commander's colors
+- Lands that produce mana MUST only produce colors in the commander's identity
+
+**CRITICAL EXAMPLES:**
+- If ${commander} is GREEN only: Can include Sol Ring, green cards, colorless cards, forests, ANY lands that produce ONLY green/colorless mana
+- If ${commander} is WHITE + BLACK: Can include white cards, black cards, multicolor WB cards, colorless cards, lands producing W/B/colorless
+- If ${commander} is 5-COLOR: Can include cards of any color
+
+**VERIFICATION STEPS:**
+1. Determine ${commander}'s exact color identity
+2. For EVERY card you add, verify it matches this color identity
+3. For EVERY land that produces colored mana, verify it only produces colors in the identity
+4. If unsure about a card's color identity, DO NOT include it
+
 ## Novelty Level: ${noveltyLevel} (${novelty}%)
 
 ${novelty >= 75
@@ -463,11 +483,12 @@ ${novelty >= 75
 ## Requirements
 
 1. Build a complete 99-card deck (do NOT include the commander in the count)
-2. Include appropriate mana base (lands)
+2. Include appropriate mana base (lands) - all lands must match color identity
 3. Balance the mana curve
 4. Include ramp, card draw, removal, and win conditions
 5. Identify key synergies and combos
 6. Explain the deck's strategy
+7. **EVERY card must match ${commander}'s color identity**
 
 ## Output Format
 
@@ -489,7 +510,10 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   }
 }
 
-CRITICAL: Suggest only REAL Magic cards. Do not hallucinate cards.`;
+CRITICAL:
+- Suggest only REAL Magic cards
+- Do not hallucinate cards
+- ALL cards must match ${commander}'s color identity`;
 }
 
 function buildCompleteDeckPrompt(commander: string, parsedDeck: Array<{name: string, quantity: number}>, novelty: number): string {
@@ -508,6 +532,26 @@ ${currentCards.join(', ')}
 ## Cards Needed
 You need to suggest **${cardsNeeded} cards** to bring this deck to a total of 99 cards.
 
+## ⚠️ CRITICAL: COLOR IDENTITY RULES ⚠️
+
+**ABSOLUTE REQUIREMENT:** ALL suggested cards MUST match ${commander}'s color identity.
+
+**COLOR IDENTITY RULES:**
+- A card's color identity includes ALL mana symbols in its mana cost AND rules text
+- You can ONLY suggest cards whose colors are a subset of the commander's colors
+- Lands that produce mana MUST only produce colors in the commander's identity
+
+**CRITICAL EXAMPLES:**
+- If ${commander} is RED + BLUE: Can suggest blue cards, red cards, UR cards, colorless cards, lands producing R/U/colorless
+- If ${commander} is MONO-WHITE: Can suggest white cards, colorless cards, lands producing W/colorless (NO other colors)
+- If ${commander} is GREEN + BLACK + BLUE: Can suggest any combination of G/B/U cards, but NO red or white cards
+
+**VERIFICATION STEPS:**
+1. Determine ${commander}'s exact color identity
+2. For EVERY card you suggest, verify it matches this color identity
+3. For EVERY land that produces colored mana, verify it only produces colors in the identity
+4. If unsure about a card's color identity, DO NOT suggest it
+
 ## Novelty Level: ${noveltyLevel} (${novelty}%)
 
 ${novelty >= 75
@@ -522,7 +566,7 @@ Analyze the existing cards and suggest ${cardsNeeded} cards to complete the deck
 1. What the deck is trying to do based on the existing cards
 2. Fill gaps in the mana curve
 3. Ensure adequate lands (if missing), ramp, card draw, removal, and threats
-4. Maintain color identity compatibility with ${commander}
+4. **CRITICAL**: Maintain color identity compatibility with ${commander}
 5. Create synergies with existing cards
 
 ## Output Format
@@ -543,46 +587,93 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   "completedDeckList": ["Full 99 card list including original + suggested cards"]
 }
 
-CRITICAL: Suggest only REAL Magic cards. Do not hallucinate cards.`;
+CRITICAL:
+- Suggest only REAL Magic cards
+- Do not hallucinate cards
+- ALL suggested cards must match ${commander}'s color identity`;
 }
 
 function buildFindCardPrompt(cardName: string, history: any[]): string {
-  const deckSummaries = history.map(h => ({
-    id: h.id,
-    name: h.deckName || 'Unnamed Deck',
-    archetype: h.archetype,
-    bracketRating: h.bracketRating,
-  }));
+  const deckSummaries = history.map(h => {
+    const commander = h.analysis?.commander || h.commander || 'Unknown';
+
+    return {
+      id: h.id,
+      name: h.deckName || 'Unnamed Deck',
+      archetype: h.archetype,
+      bracketRating: h.bracketRating,
+      commander,
+    };
+  });
 
   return `You are an expert Magic: The Gathering deck analyst. The user has a card "${cardName}" and wants to know which of their saved decks would benefit most from adding it.
 
+## ⚠️ CRITICAL: COLOR IDENTITY RULES ⚠️
+
+Before recommending ANY deck, you MUST verify "${cardName}" matches the deck's color identity.
+
+**COLOR IDENTITY INCLUDES:**
+- ALL mana symbols in the card's mana cost
+- ALL mana symbols in the card's rules text
+- Color indicator (for cards with no mana cost)
+
+**CRITICAL EXAMPLES:**
+- **Sylvan Safekeeper** (costs {G}) = GREEN identity → Can ONLY go in decks with Green (e.g., G, GW, GU, GUW, etc.)
+- **Anguished Unmaking** (costs {1}{W}{B}) = WHITE + BLACK identity → Can ONLY go in decks with BOTH W and B (e.g., WB, WBG, WBR, etc.)
+- **Kenrith, the Returned King** (has {W}{U}{B}{R}{G} in text) = 5-COLOR identity → Can ONLY go in 5-color decks
+- **Sol Ring** (colorless, no color symbols) = COLORLESS → Can go in ANY deck
+- **Esper Charm** (costs {W}{U}{B}) = WHITE + BLUE + BLACK → Can ONLY go in decks with W, U, and B
+
+**STEP-BY-STEP VERIFICATION:**
+1. Look up "${cardName}" and identify ALL mana symbols in its cost and text
+2. For EACH deck, determine the commander's color identity
+3. If "${cardName}" has ANY color not in the commander's colors, REJECT that deck
+4. Only recommend decks where "${cardName}"'s colors are a subset of the commander's colors
+
+**IF "${cardName}" DOES NOT MATCH A DECK'S COLOR IDENTITY, DO NOT RECOMMEND THAT DECK.**
+
 ## Saved Decks
 
-${deckSummaries.map((d, i) => `${i + 1}. ${d.name} (${d.archetype}) - Bracket ${d.bracketRating}/4`).join('\n')}
+${deckSummaries.map((d, i) => `${i + 1}. "${d.name}"
+   - Commander: ${d.commander}
+   - Archetype: ${d.archetype}
+   - Bracket: ${d.bracketRating}/4`).join('\n\n')}
 
 ## Your Task
 
-Analyze which deck would benefit most from adding "${cardName}". Consider:
+1. **FIRST**: Look up "${cardName}" and determine its exact color identity
+2. **SECOND**: For each deck, verify the commander's color identity matches
+3. **THIRD**: Among valid matches, analyze which would benefit most
+
+Consider:
 - Card synergy with the deck's strategy
 - How it fills gaps or weaknesses
 - Power level compatibility with bracket rating
-- Color identity match
 
 ## Output Format
 
 Respond with ONLY valid JSON (no markdown, no code blocks):
 
 {
+  "cardColorIdentity": "The color identity of ${cardName} (e.g., 'WB', 'G', 'Colorless')",
   "bestMatch": {
     "deckName": "Name of best matching deck",
-    "archetype": "Archetype",
+    "commander": "Commander name",
     "reasoning": "Why this card fits this deck",
     "synergies": ["What it synergizes with", ...]
   },
   "otherMatches": [
     {
       "deckName": "Name",
+      "commander": "Commander name",
       "reasoning": "Why it could fit"
+    }
+  ],
+  "colorMismatches": [
+    {
+      "deckName": "Name",
+      "commander": "Commander name",
+      "reason": "Why color identity doesn't match"
     }
   ]
 }`;
@@ -741,16 +832,36 @@ ${deckBreakdown}
 ## User's Question
 ${question}
 
+## ⚠️ CRITICAL: COLOR IDENTITY RULES (If Suggesting Cards) ⚠️
+
+**IF you suggest ANY cards, they MUST match ${commander ? commander + "'s" : "the deck's"} color identity.**
+
+**COLOR IDENTITY RULES:**
+- A card's color identity includes ALL mana symbols in its mana cost AND rules text
+- You can ONLY suggest cards whose colors are a subset of the ${commander ? "commander's" : "deck's"} colors
+- Lands that produce mana MUST only produce colors in the color identity
+
+**CRITICAL EXAMPLES:**
+- If ${commander || "the commander"} is BLUE + RED: Can suggest U cards, R cards, UR cards, colorless cards, lands producing U/R/colorless
+- If ${commander || "the commander"} is MONO-GREEN: Can suggest green cards, colorless cards, lands producing G/colorless (NO other colors)
+- If ${commander || "the commander"} is 5-COLOR: Can suggest cards of any color
+
+**BEFORE suggesting ANY card:**
+1. Determine ${commander ? commander + "'s" : "the deck's"} exact color identity
+2. Verify the suggested card matches this color identity
+3. If unsure, DO NOT suggest it
+
 ## Instructions
 - Give specific, actionable answers based on the cards in this deck
 - Reference specific card names from the deck when relevant
 - Use the deck breakdown above for ground truth facts (archetype, strengths, weaknesses, combos)
 - If asking about numbers (lands, creatures, etc.), make educated guesses based on typical Commander deck composition
-- If asking about combos/synergies, suggest real cards that would work with cards in this deck
+- If asking about combos/synergies, suggest real cards that work with cards in this deck **AND match color identity**
 - If the question mentions a specific card, focus your analysis on that card in the context of this deck
 - Be concise but thorough
 - Use your Magic knowledge to provide strategic insights
 - Only suggest REAL Magic cards (do not hallucinate cards)
+- **ALL card suggestions must match ${commander ? commander + "'s" : "the deck's"} color identity**
 - **DO NOT include any URLs or links in your response** - just mention card names (the UI will handle previews and shopping links automatically)
 
 Answer the question directly and helpfully.`;
@@ -854,6 +965,26 @@ function buildCollectionOptimizationPrompt(
 **Your Collection (${collection.length} cards):**
 ${collection.join(', ')}
 
+## ⚠️ CRITICAL: COLOR IDENTITY RULES ⚠️
+
+**ABSOLUTE REQUIREMENT:** ALL cards in the deck MUST match the commander's color identity.
+
+**COLOR IDENTITY RULES:**
+- A card's color identity includes ALL mana symbols in its mana cost AND rules text
+- You can ONLY include cards whose colors are a subset of the commander's colors
+- Lands that produce mana MUST only produce colors in the commander's identity
+
+**CRITICAL EXAMPLES:**
+- If commander is WHITE + BLUE: Can include W cards, U cards, WU cards, colorless cards, lands producing W/U/colorless
+- If commander is MONO-BLACK: Can include black cards, colorless cards, lands producing B/colorless (NO other colors)
+- If commander is 5-COLOR: Can include cards of any color
+
+**VERIFICATION STEPS:**
+1. Determine the commander's exact color identity
+2. For EVERY card you add, verify it matches this color identity
+3. For EVERY land that produces colored mana, verify it only produces colors in the identity
+4. If unsure about a card's color identity, DO NOT include it
+
 **Requirements:**
 `;
 
@@ -872,8 +1003,8 @@ ${collection.join(', ')}
   prompt += `
 - Deck must contain EXACTLY 99 cards (excluding commander)
 - ALL cards must come from the provided collection
-- Follow color identity rules (only use cards matching commander's colors)
-- Include optimal mana base from available lands
+- **CRITICAL**: ALL cards must match the commander's color identity
+- Include optimal mana base from available lands (matching color identity)
 - Prioritize synergies and card quality
 - Aim for proper mana curve and card type balance
 
@@ -896,6 +1027,7 @@ ${collection.join(', ')}
 
 **Important:**
 - Use ONLY cards from the provided collection
+- **ALL cards must match the commander's color identity**
 - Each card can only appear once (except basic lands if available)
 - Be strategic about card selection - quality over quantity
 - Make sure the deck is functional and has clear win conditions
