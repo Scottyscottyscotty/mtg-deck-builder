@@ -787,12 +787,13 @@ function displayAnalysisInElement(analysis, elementId) {
       html += '<div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid #51cf66;">';
       html += `<div style="font-weight: bold; color: #51cf66; margin-bottom: 8px;">💰 ${escapeHtml(tier.budget)}</div>`;
       html += `<div style="margin-bottom: 8px;"><strong>Expected Impact:</strong> ${escapeHtml(tier.expectedImpact)}</div>`;
-      html += '<div><strong>Recommended Cards:</strong></div>';
-      html += '<ul style="margin: 5px 0 0 20px;">';
+      html += '<div style="margin-bottom: 10px;"><strong>Recommended Cards:</strong></div>';
       tier.recommendedUpgrades.forEach((card) => {
-        html += `<li>${wrapCardName(card)}</li>`;
+        html += '<div style="margin-bottom: 8px; padding-left: 10px;">';
+        html += `<div>${wrapCardName(card)}</div>`;
+        html += `${createShopLinks(card)}`;
+        html += '</div>';
       });
-      html += '</ul>';
       html += '</div>';
     });
     html += '</div>';
@@ -998,12 +999,13 @@ function displayAnalysis(analysis) {
       html += '<div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid #51cf66;">';
       html += `<div style="font-weight: bold; color: #51cf66; margin-bottom: 8px;">💰 ${escapeHtml(tier.budget)}</div>`;
       html += `<div style="margin-bottom: 8px;"><strong>Expected Impact:</strong> ${escapeHtml(tier.expectedImpact)}</div>`;
-      html += '<div><strong>Recommended Cards:</strong></div>';
-      html += '<ul style="margin: 5px 0 0 20px;">';
+      html += '<div style="margin-bottom: 10px;"><strong>Recommended Cards:</strong></div>';
       tier.recommendedUpgrades.forEach((card) => {
-        html += `<li>${wrapCardName(card)}</li>`;
+        html += '<div style="margin-bottom: 8px; padding-left: 10px;">';
+        html += `<div>${wrapCardName(card)}</div>`;
+        html += `${createShopLinks(card)}`;
+        html += '</div>';
       });
-      html += '</ul>';
       html += '</div>';
     });
     html += '</div>';

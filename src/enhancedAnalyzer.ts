@@ -312,7 +312,19 @@ ${deckList}`;
   prompt += `   - **PRIORITIZE THE PRIMARY WEAK POINT** - suggest upgrades that fix it first\n`;
   prompt += `   - For example: If mana base is critical, budget tier should focus on untapped lands\n`;
   prompt += `   - List specific cards for each tier that address the most impactful weaknesses\n`;
-  prompt += `   - Explain expected impact (e.g., "Fixes mana consistency, enables turn 3-4 plays")\n\n`;
+  prompt += `   - Explain expected impact (e.g., "Fixes mana consistency, enables turn 3-4 plays")\n`;
+
+  // Apply novelty preferences to upgrade roadmap
+  if (novelty >= 75) {
+    prompt += `   - **NOVELTY PREFERENCE**: Prioritize underplayed, creative alternatives (<25% inclusion rate)\n`;
+    prompt += `   - Avoid mainstream staples when equally effective alternatives exist\n`;
+  } else if (novelty >= 50) {
+    prompt += `   - **NOVELTY PREFERENCE**: Balance proven cards with creative alternatives (10-40% inclusion rate)\n`;
+    prompt += `   - Avoid the most overplayed staples when possible\n`;
+  } else {
+    prompt += `   - Suggest the most effective cards for each tier, regardless of popularity\n`;
+  }
+  prompt += `\n`;
 
   prompt += `9. **Card Suggestions**: Recommend 10-15 cards across different price ranges:\n`;
   if (novelty >= 75) {
