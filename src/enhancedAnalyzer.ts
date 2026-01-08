@@ -98,7 +98,7 @@ export async function enhancedAnalyzeDeck(
 
   const response = await anthropic.messages.create({
     model: modelId,
-    max_tokens: 4096,
+    max_tokens: 8192, // Increased for weak point analysis + upgrade path sections
     temperature: 0, // Prevent hallucinations - must suggest only real cards
     messages: [{ role: 'user', content: prompt }],
   });
