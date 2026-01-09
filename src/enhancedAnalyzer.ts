@@ -98,7 +98,7 @@ export async function enhancedAnalyzeDeck(
 
   const response = await anthropic.messages.create({
     model: modelId,
-    max_tokens: 8192, // Increased for weak point analysis + upgrade path sections
+    max_tokens: 16384, // Increased for synergy graph generation
     temperature: 0, // Prevent hallucinations - must suggest only real cards
     messages: [{ role: 'user', content: prompt }],
   });
@@ -359,6 +359,19 @@ ${deckList}`;
   prompt += `   - Bracket 4: cEDH level, optimized for competitive play\n`;
   prompt += `\n   Provide the number and explain your reasoning.\n\n`;
   prompt += `11. **Overall Assessment**: 2-3 paragraph summary\n\n`;
+  prompt += `12. **Synergy Network Graph**: Create a visual map of card relationships for interactive exploration:\n`;
+  prompt += `   - **Nodes**: Include 15-25 key cards that have interesting interactions (not every land, but include key ones)\n`;
+  prompt += `   - **Node Categories**: Classify each card as ramp, draw, removal, threat, enabler, payoff, utility, or land\n`;
+  prompt += `   - **Edges**: Connect cards that synergize, with edge types:\n`;
+  prompt += `     - "mana": Card A generates mana that helps cast/activate card B\n`;
+  prompt += `     - "card_advantage": Card A helps draw/tutor for card B\n`;
+  prompt += `     - "combo": Cards form an infinite combo or game-winning interaction\n`;
+  prompt += `     - "synergy": Cards work well together (triggers, amplification, etc.)\n`;
+  prompt += `     - "enables": Card A enables card B's strategy\n`;
+  prompt += `   - **Strength**: Rate each relationship 1-10 (how impactful is this interaction?)\n`;
+  prompt += `   - **Description**: 1-2 sentences explaining the interaction\n`;
+  prompt += `   - Focus on the MOST IMPORTANT relationships - aim for 20-40 edges total\n`;
+  prompt += `   - Prioritize hub cards (cards with many connections) and combo pieces\n\n`;
 
   prompt += `## Output Format\n\nRespond with ONLY valid JSON (no markdown, no code blocks):\n\n`;
   prompt += `{
@@ -412,7 +425,27 @@ ${deckList}`;
   ],
   "bracketRating": 1-4,
   "bracketReasoning": "string",
-  "overallAssessment": "string"
+  "overallAssessment": "string",
+  "synergyGraph": {
+    "nodes": [
+      {
+        "id": "card-name-lowercase-no-spaces",
+        "name": "Card Name",
+        "category": "ramp" | "draw" | "removal" | "threat" | "enabler" | "payoff" | "utility" | "land"
+      },
+      ...
+    ],
+    "edges": [
+      {
+        "from": "node-id",
+        "to": "node-id",
+        "type": "mana" | "card_advantage" | "combo" | "synergy" | "enables",
+        "description": "Brief explanation of how they interact",
+        "strength": 1-10
+      },
+      ...
+    ]
+  }
 }
 
 ## Confidence Levels for Suggestions
