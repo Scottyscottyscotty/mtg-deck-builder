@@ -916,6 +916,7 @@ app.post('/api/optimize-collection', async (req: any, res: any) => {
       });
     }
 
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
     const anthropic = new Anthropic({ apiKey });
     const modelId = model === 'opus'
       ? 'claude-opus-4-5-20251101'
