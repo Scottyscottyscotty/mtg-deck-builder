@@ -83,4 +83,20 @@ export interface DeckAnalysis {
       expectedImpact: string; // What improvement to expect
     }>;
   };
+
+  // Synergy network graph for visualization
+  synergyGraph?: {
+    nodes: Array<{
+      id: string; // Unique identifier (normalized card name)
+      name: string; // Display name
+      category: 'ramp' | 'draw' | 'removal' | 'threat' | 'enabler' | 'payoff' | 'utility' | 'land';
+    }>;
+    edges: Array<{
+      from: string; // Node ID
+      to: string; // Node ID
+      type: 'mana' | 'card_advantage' | 'combo' | 'synergy' | 'enables';
+      description: string; // Human-readable explanation
+      strength: number; // 1-10 scale
+    }>;
+  };
 }

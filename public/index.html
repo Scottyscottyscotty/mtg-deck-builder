@@ -1115,6 +1115,9 @@
       color: #cc7700;
     }
   </style>
+
+  <!-- vis-network for synergy graph visualization -->
+  <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -1132,6 +1135,7 @@
       <button class="tab" onclick="switchTab('complete', event)">Complete</button>
       <button class="tab" onclick="switchTab('dropin', event)">Drop-In</button>
       <button class="tab" onclick="switchTab('findcard', event)">Find</button>
+      <button class="tab" onclick="switchTab('synergy', event)">Synergy</button>
       <button class="tab" onclick="switchTab('collection', event)">Collection</button>
       <button class="tab" onclick="switchTab('compare', event)">Compare</button>
       <button class="tab" onclick="switchTab('import', event)">Import</button>
@@ -1409,6 +1413,35 @@
       </div>
 
       <div class="card results" id="find-results"></div>
+    </div>
+
+    <!-- Synergy Map Tab -->
+    <div id="synergy-tab" class="tab-content">
+      <div class="card">
+        <h3 style="margin-bottom: 15px;">🕸️ Synergy Network Map</h3>
+        <p style="color: #999; margin-bottom: 20px;">
+          Visualize card interactions in your deck. Click cards to highlight connections, click edges to see how they synergize.
+        </p>
+        <div id="synergy-graph-legend" style="margin-bottom: 15px; display: none;">
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.85em;">
+            <div><span style="color: #4a9eff;">●</span> Mana</div>
+            <div><span style="color: #9c27b0;">●</span> Card Advantage</div>
+            <div><span style="color: #ff0000;">●</span> Combo</div>
+            <div><span style="color: #4caf50;">●</span> Synergy</div>
+            <div><span style="color: #ff9800;">●</span> Enables</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error" id="synergy-error">No deck analyzed yet. Analyze a deck first to see its synergy map!</div>
+
+      <div class="card" id="synergy-container" style="display: none;">
+        <div id="synergy-graph" style="width: 100%; height: 600px; background: #000; border: 2px solid #ff9500; box-shadow: 0 0 20px rgba(255, 149, 0, 0.3);"></div>
+        <div id="synergy-details" style="margin-top: 15px; padding: 15px; background: rgba(255, 149, 0, 0.05); border: 1px solid #ff9500; display: none;">
+          <h4 style="margin: 0 0 10px 0;">Connection Details</h4>
+          <p id="synergy-details-text" style="margin: 0;"></p>
+        </div>
+      </div>
     </div>
 
     <!-- Collection Optimizer Tab -->

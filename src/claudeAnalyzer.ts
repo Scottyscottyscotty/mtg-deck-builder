@@ -102,6 +102,20 @@ Please analyze this deck and provide:
 
 11. **Overall Assessment**: A 2-3 paragraph summary of the deck's identity, play pattern, and overall power level.
 
+12. **Synergy Network Graph**: Create a visual map of card relationships for interactive exploration:
+   - **Nodes**: Include 15-25 key cards that have interesting interactions (not every land, but include key ones)
+   - **Node Categories**: Classify each card as ramp, draw, removal, threat, enabler, payoff, utility, or land
+   - **Edges**: Connect cards that synergize, with edge types:
+     - "mana": Card A generates mana that helps cast/activate card B
+     - "card_advantage": Card A helps draw/tutor for card B
+     - "combo": Cards form an infinite combo or game-winning interaction
+     - "synergy": Cards work well together (triggers, amplification, etc.)
+     - "enables": Card A enables card B's strategy
+   - **Strength**: Rate each relationship 1-10 (how impactful is this interaction?)
+   - **Description**: 1-2 sentences explaining the interaction
+   - Focus on the MOST IMPORTANT relationships - aim for 20-40 edges total
+   - Prioritize hub cards (cards with many connections) and combo pieces
+
 ## Output Format
 
 Respond with ONLY valid JSON in this exact structure (no markdown, no code blocks, just the JSON):
@@ -153,12 +167,32 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
   ],
   "bracketRating": 1-4,
   "bracketReasoning": "string",
-  "overallAssessment": "string"
+  "overallAssessment": "string",
+  "synergyGraph": {
+    "nodes": [
+      {
+        "id": "card-name-lowercase-no-spaces",
+        "name": "Card Name",
+        "category": "ramp" | "draw" | "removal" | "threat" | "enabler" | "payoff" | "utility" | "land"
+      },
+      ...
+    ],
+    "edges": [
+      {
+        "from": "node-id",
+        "to": "node-id",
+        "type": "mana" | "card_advantage" | "combo" | "synergy" | "enables",
+        "description": "Brief explanation of how they interact",
+        "strength": 1-10
+      },
+      ...
+    ]
+  }
 }`;
 
   const response = await anthropic.messages.create({
     model: modelId,
-    max_tokens: 8192, // Increased for weak point analysis + upgrade path sections
+    max_tokens: 16384, // Increased for synergy graph generation
     temperature: 0, // Prevent hallucinations - must suggest only real cards
     messages: [
       {

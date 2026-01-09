@@ -1346,7 +1346,160 @@ function displayAnalysis(analysis) {
     conversationHistory: []
   };
 
+  // Store synergy graph for visualization
+  if (analysis.synergyGraph) {
+    window.currentSynergyGraph = analysis.synergyGraph;
+    renderSynergyGraph(analysis.synergyGraph);
+  }
+
   // Setup card hover listeners
+  setupCardHoverListeners();
+}
+
+// Render synergy network graph
+let synergyNetwork = null; // Store network instance globally
+
+function renderSynergyGraph(synergyGraph) {
+  if (!synergyGraph || !synergyGraph.nodes || !synergyGraph.edges) {
+    document.getElementById('synergy-error').style.display = 'block';
+    document.getElementById('synergy-container').style.display = 'none';
+    document.getElementById('synergy-graph-legend').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('synergy-error').style.display = 'none';
+  document.getElementById('synergy-container').style.display = 'block';
+  document.getElementById('synergy-graph-legend').style.display = 'block';
+
+  // Color scheme for edge types
+  const edgeColors = {
+    mana: '#4a9eff',
+    card_advantage: '#9c27b0',
+    combo: '#ff0000',
+    synergy: '#4caf50',
+    enables: '#ff9800'
+  };
+
+  // Color scheme for node categories
+  const nodeColors = {
+    ramp: '#4caf50',
+    draw: '#2196f3',
+    removal: '#f44336',
+    threat: '#ff9800',
+    enabler: '#9c27b0',
+    payoff: '#ffc107',
+    utility: '#607d8b',
+    land: '#795548'
+  };
+
+  // Prepare nodes for vis-network
+  const nodes = synergyGraph.nodes.map(node => ({
+    id: node.id,
+    label: node.name,
+    color: {
+      background: nodeColors[node.category] || '#999',
+      border: '#ff9500',
+      highlight: { background: '#ff9500', border: '#ffaa00' }
+    },
+    font: {
+      color: '#fff',
+      size: 14,
+      face: 'Courier Prime'
+    },
+    title: node.name, // Tooltip
+    shape: 'box',
+    margin: 10
+  }));
+
+  // Prepare edges for vis-network
+  const edges = synergyGraph.edges.map((edge, idx) => ({
+    id: `edge-${idx}`,
+    from: edge.from,
+    to: edge.to,
+    color: {
+      color: edgeColors[edge.type] || '#999',
+      highlight: '#ff9500'
+    },
+    width: Math.max(1, edge.strength / 2),
+    label: edge.type,
+    font: {
+      color: '#ff9500',
+      size: 10,
+      strokeWidth: 0
+    },
+    title: edge.description, // Tooltip
+    smooth: { type: 'continuous' },
+    arrows: { to: { enabled: true, scaleFactor: 0.5 } }
+  }));
+
+  // Create network
+  const container = document.getElementById('synergy-graph');
+  const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+
+  const options = {
+    nodes: {
+      borderWidth: 2,
+      borderWidthSelected: 3
+    },
+    edges: {
+      smooth: { type: 'continuous' }
+    },
+    physics: {
+      stabilization: { iterations: 200 },
+      barnesHut: {
+        gravitationalConstant: -8000,
+        centralGravity: 0.3,
+        springLength: 150,
+        springConstant: 0.04,
+        damping: 0.09,
+        avoidOverlap: 0.1
+      }
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 100
+    }
+  };
+
+  synergyNetwork = new vis.Network(container, data, options);
+
+  // Event handlers
+  synergyNetwork.on('click', (params) => {
+    if (params.edges.length > 0) {
+      // Clicked on edge
+      const edgeId = params.edges[0];
+      const edge = synergyGraph.edges[parseInt(edgeId.split('-')[1])];
+      showEdgeDetails(edge);
+    } else {
+      // Hide details when clicking elsewhere
+      document.getElementById('synergy-details').style.display = 'none';
+    }
+  });
+
+  synergyNetwork.on('selectNode', (params) => {
+    // Highlight connected nodes and edges
+    const nodeId = params.nodes[0];
+    const connectedEdges = synergyNetwork.getConnectedEdges(nodeId);
+    synergyNetwork.selectEdges(connectedEdges);
+  });
+}
+
+function showEdgeDetails(edge) {
+  const detailsEl = document.getElementById('synergy-details');
+  const textEl = document.getElementById('synergy-details-text');
+
+  const fromNode = window.currentSynergyGraph.nodes.find(n => n.id === edge.from);
+  const toNode = window.currentSynergyGraph.nodes.find(n => n.id === edge.to);
+
+  textEl.innerHTML = `
+    <strong>${wrapCardName(fromNode.name)} → ${wrapCardName(toNode.name)}</strong><br>
+    <em>Type: ${edge.type}</em> (Strength: ${edge.strength}/10)<br>
+    ${escapeHtml(edge.description)}
+  `;
+
+  detailsEl.style.display = 'block';
+
+  // Setup card hover listeners for the new content
   setupCardHoverListeners();
 }
 
