@@ -430,11 +430,22 @@ app.post('/api/find-card', async (req, res) => {
       return res.status(400).json({ error: 'No decks in history. Analyze some decks first!' });
     }
 
+    // Look up card on Scryfall to get its details (even if it's brand new)
+    const { searchCard } = await import('./scryfallClient.js');
+    let cardData = null;
+
+    try {
+      cardData = await searchCard(cardName);
+    } catch (error) {
+      console.warn(`Warning: Could not find card "${cardName}" on Scryfall:`, error);
+      // Continue without card data - Claude will do its best
+    }
+
     // Use Claude to analyze which deck would benefit most
     const Anthropic = (await import('@anthropic-ai/sdk')).default;
     const anthropic = new Anthropic({ apiKey });
 
-    const prompt = buildFindCardPrompt(cardName, history);
+    const prompt = buildFindCardPrompt(cardName, history, cardData);
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
@@ -674,7 +685,7 @@ CRITICAL:
 - ALL suggested cards must match ${commander}'s color identity`;
 }
 
-function buildFindCardPrompt(cardName: string, history: any[]): string {
+function buildFindCardPrompt(cardName: string, history: any[], cardData: any = null): string {
   const deckSummaries = history.map(h => {
     const commander = h.analysis?.commander || h.commander || 'Unknown';
 
@@ -687,7 +698,33 @@ function buildFindCardPrompt(cardName: string, history: any[]): string {
     };
   });
 
+  // Build card details section if we have Scryfall data
+  let cardDetailsSection = '';
+  if (cardData) {
+    const colorIdentity = cardData.color_identity && cardData.color_identity.length > 0
+      ? cardData.color_identity.join('')
+      : 'Colorless';
+
+    cardDetailsSection = `
+## 📋 Card Details (from Scryfall)
+
+**This information is authoritative - use it even if you don't recognize the card from training data.**
+
+- **Name:** ${cardData.name}
+- **Mana Cost:** ${cardData.mana_cost || 'N/A'}
+- **Type:** ${cardData.type_line}
+- **Oracle Text:** ${cardData.oracle_text || 'No text'}
+- **Color Identity:** ${colorIdentity}
+${cardData.power && cardData.toughness ? `- **P/T:** ${cardData.power}/${cardData.toughness}` : ''}
+${cardData.loyalty ? `- **Loyalty:** ${cardData.loyalty}` : ''}
+
+**Use the above information to determine synergies and color identity compatibility.**
+
+`;
+  }
+
   return `You are an expert Magic: The Gathering deck analyst. The user has a card "${cardName}" and wants to know which of their saved decks would benefit most from adding it.
+${cardDetailsSection}
 
 ## ⚠️ CRITICAL: COLOR IDENTITY RULES ⚠️
 
