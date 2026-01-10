@@ -314,9 +314,13 @@ app.post('/api/build-deck', async (req, res) => {
 
     const deckData = JSON.parse(deckText);
 
+    // Validate and fix card count
+    const validatedDeck = validateDeckSize(deckData, 99);
+
     res.json({
       success: true,
-      deck: deckData,
+      deck: validatedDeck.deck,
+      warnings: validatedDeck.warnings,
     });
   } catch (error: any) {
     console.error('Build deck error:', error);
@@ -379,12 +383,26 @@ app.post('/api/complete-deck', async (req, res) => {
 
     const completionData = JSON.parse(completionText);
 
-    res.json({
-      success: true,
-      completion: completionData,
-      originalSize: parsedDeck.length,
-      cardsAdded: completionData.suggestedCards?.length || 0,
-    });
+    // Validate the completed deck size
+    if (completionData.completedDeckList) {
+      const validated = validateDeckSize({ deckList: completionData.completedDeckList }, 99);
+      completionData.completedDeckList = validated.deck.deckList;
+
+      res.json({
+        success: true,
+        completion: completionData,
+        originalSize: parsedDeck.length,
+        cardsAdded: completionData.suggestedCards?.length || 0,
+        warnings: validated.warnings,
+      });
+    } else {
+      res.json({
+        success: true,
+        completion: completionData,
+        originalSize: parsedDeck.length,
+        cardsAdded: completionData.suggestedCards?.length || 0,
+      });
+    }
   } catch (error: any) {
     console.error('Complete deck error:', error);
     res.status(500).json({ error: error.message || 'Deck completion failed' });
@@ -446,6 +464,67 @@ app.post('/api/find-card', async (req, res) => {
     res.status(500).json({ error: error.message || 'Card search failed' });
   }
 });
+
+/**
+ * Validates and fixes deck size issues (duplicates, wrong count)
+ * Returns validated deck and warnings about what was changed
+ */
+function validateDeckSize(
+  deckData: { deckList: string[] },
+  targetSize: number
+): { deck: { deckList: string[] }; warnings: string[] } {
+  const warnings: string[] = [];
+  let cardList = deckData.deckList || [];
+
+  // Step 1: Remove duplicates (case-insensitive)
+  const seen = new Set<string>();
+  const uniqueCards: string[] = [];
+  const duplicates: string[] = [];
+
+  for (const card of cardList) {
+    const normalized = card.toLowerCase().trim();
+    if (seen.has(normalized)) {
+      duplicates.push(card);
+    } else {
+      seen.add(normalized);
+      uniqueCards.push(card);
+    }
+  }
+
+  if (duplicates.length > 0) {
+    warnings.push(
+      `Removed ${duplicates.length} duplicate card(s): ${duplicates.slice(0, 5).join(', ')}${
+        duplicates.length > 5 ? '...' : ''
+      }`
+    );
+  }
+
+  cardList = uniqueCards;
+
+  // Step 2: Check if count matches target
+  const actualCount = cardList.length;
+
+  if (actualCount > targetSize) {
+    const excess = actualCount - targetSize;
+    const removed = cardList.slice(targetSize); // Remove from the end
+    cardList = cardList.slice(0, targetSize);
+
+    warnings.push(
+      `AI generated ${actualCount} cards instead of ${targetSize}. Removed last ${excess} card(s): ${removed.slice(0, 3).join(', ')}${
+        excess > 3 ? '...' : ''
+      }`
+    );
+  } else if (actualCount < targetSize) {
+    warnings.push(
+      `Deck has ${actualCount} cards instead of ${targetSize}. Consider adding ${targetSize - actualCount} more cards.`
+    );
+  }
+
+  return {
+    deck: { deckList: cardList },
+    warnings: warnings.length > 0 ? warnings : [],
+  };
+}
 
 function buildDeckPrompt(commander: string, novelty: number): string {
   const noveltyLevel = novelty >= 75 ? 'MAXIMUM' : novelty >= 50 ? 'BALANCED' : 'META';
@@ -954,10 +1033,22 @@ app.post('/api/optimize-collection', async (req: any, res: any) => {
 
     const result = JSON.parse(jsonMatch[1]);
 
-    res.json({
-      commander: result.commander,
-      deck: result,
-    });
+    // Validate deck size (mainDeck should have 99 cards)
+    if (result.mainDeck) {
+      const validated = validateDeckSize({ deckList: result.mainDeck }, 99);
+      result.mainDeck = validated.deck.deckList;
+
+      res.json({
+        commander: result.commander,
+        deck: result,
+        warnings: validated.warnings,
+      });
+    } else {
+      res.json({
+        commander: result.commander,
+        deck: result,
+      });
+    }
   } catch (error: any) {
     console.error('Collection optimization error:', error);
     res.status(500).json({

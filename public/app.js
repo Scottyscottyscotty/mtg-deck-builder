@@ -331,7 +331,7 @@ async function buildDeck() {
       throw new Error(data.error || 'Deck building failed');
     }
 
-    displayBuiltDeck(data.deck, commander);
+    displayBuiltDeck(data.deck, commander, data.warnings);
     showResults('build-results');
   } catch (error) {
     showError('build-error', error.message);
@@ -409,7 +409,7 @@ async function optimizeCollection() {
       throw new Error(data.error || 'Collection optimization failed');
     }
 
-    displayOptimizedDeck(data.deck, data.commander);
+    displayOptimizedDeck(data.deck, data.commander, data.warnings);
     showResults('collection-results');
   } catch (error) {
     showError('collection-error', error.message);
@@ -419,10 +419,22 @@ async function optimizeCollection() {
 }
 
 // Display optimized deck from collection
-function displayOptimizedDeck(deck, commander) {
+function displayOptimizedDeck(deck, commander, warnings = []) {
   const el = document.getElementById('collection-results');
 
   let html = `<h2>🏗️ Optimized Deck: ${escapeHtml(commander)}</h2>`;
+
+  // Display warnings if any
+  if (warnings && warnings.length > 0) {
+    html += '<div class="section warning-section" style="background: rgba(255, 149, 0, 0.1); border-left: 3px solid #ff9500; padding: 15px; margin-bottom: 20px;">';
+    html += '<h3 style="margin-top: 0;">⚠️ Deck Validation Warnings</h3>';
+    html += '<ul style="margin: 10px 0;">';
+    warnings.forEach(warning => {
+      html += `<li>${escapeHtml(warning)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
 
   // Strategy
   if (deck.strategy) {
@@ -475,10 +487,22 @@ function displayOptimizedDeck(deck, commander) {
 }
 
 // Display built deck
-function displayBuiltDeck(deck, commander) {
+function displayBuiltDeck(deck, commander, warnings = []) {
   const el = document.getElementById('build-results');
 
   let html = `<h2>🏗️ Built Deck: ${escapeHtml(commander)}</h2>`;
+
+  // Display warnings if any
+  if (warnings && warnings.length > 0) {
+    html += '<div class="section warning-section" style="background: rgba(255, 149, 0, 0.1); border-left: 3px solid #ff9500; padding: 15px; margin-bottom: 20px;">';
+    html += '<h3 style="margin-top: 0;">⚠️ Deck Validation Warnings</h3>';
+    html += '<ul style="margin: 10px 0;">';
+    warnings.forEach(warning => {
+      html += `<li>${escapeHtml(warning)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
 
   // Strategy
   html += '<div class="section">';
@@ -643,7 +667,7 @@ async function completeDeck() {
       throw new Error(data.error || 'Deck completion failed');
     }
 
-    displayCompletedDeck(data.completion, commander, data.originalSize, data.cardsAdded);
+    displayCompletedDeck(data.completion, commander, data.originalSize, data.cardsAdded, data.warnings);
     showResults('complete-results');
   } catch (error) {
     showError('complete-error', error.message);
@@ -653,10 +677,22 @@ async function completeDeck() {
 }
 
 // Display completed deck
-function displayCompletedDeck(completion, commander, originalSize, cardsAdded) {
+function displayCompletedDeck(completion, commander, originalSize, cardsAdded, warnings = []) {
   const el = document.getElementById('complete-results');
 
   let html = `<h2>🧩 Completed Deck: ${escapeHtml(commander)}</h2>`;
+
+  // Display warnings if any
+  if (warnings && warnings.length > 0) {
+    html += '<div class="section warning-section" style="background: rgba(255, 149, 0, 0.1); border-left: 3px solid #ff9500; padding: 15px; margin-bottom: 20px;">';
+    html += '<h3 style="margin-top: 0;">⚠️ Deck Validation Warnings</h3>';
+    html += '<ul style="margin: 10px 0;">';
+    warnings.forEach(warning => {
+      html += `<li>${escapeHtml(warning)}</li>`;
+    });
+    html += '</ul>';
+    html += '</div>';
+  }
 
   // Summary
   html += '<div class="section">';
