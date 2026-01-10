@@ -40,19 +40,36 @@ async function downloadBulkData() {
 
   const bulkInfo = await httpsGet('https://api.scryfall.com/bulk-data');
 
+  // Debug: Log the response structure
+  console.log('   Response keys:', Object.keys(bulkInfo));
+
+  // Scryfall returns an object with a 'data' array, but check if it's there
+  const bulkDataList = bulkInfo.data || bulkInfo;
+
+  if (!Array.isArray(bulkDataList)) {
+    console.error('   Unexpected response format:', JSON.stringify(bulkInfo, null, 2));
+    throw new Error('Scryfall bulk data response is not in expected format');
+  }
+
   // Find the "Default Cards" bulk data (unique cards only)
-  const defaultCards = bulkInfo.data.find(d => d.type === 'default_cards');
+  const defaultCards = bulkDataList.find(d => d.type === 'default_cards');
 
   if (!defaultCards) {
+    console.error('   Available types:', bulkDataList.map(d => d.type).join(', '));
     throw new Error('Could not find default_cards bulk data');
   }
 
   console.log(`📥 Downloading ${defaultCards.name}...`);
   console.log(`   Size: ${(defaultCards.size / 1024 / 1024).toFixed(1)} MB`);
-  console.log(`   URL: ${defaultCards.download_uri}`);
+  console.log(`   Updated: ${defaultCards.updated_at}`);
 
   // Download the full card database
+  console.log(`   Fetching from: ${defaultCards.download_uri.substring(0, 50)}...`);
   const allCards = await httpsGet(defaultCards.download_uri);
+
+  if (!Array.isArray(allCards)) {
+    throw new Error('Downloaded data is not an array of cards');
+  }
 
   console.log(`✅ Downloaded ${allCards.length.toLocaleString()} cards`);
 
