@@ -522,12 +522,21 @@ function validateDeckSize(
   let cardList = deckData.deckList || [];
 
   // Step 1: Remove duplicates (case-insensitive)
+  // EXCEPTION: Basic lands (Plains, Island, Swamp, Mountain, Forest) can be duplicated
+  const basicLands = ['plains', 'island', 'swamp', 'mountain', 'forest'];
   const seen = new Set<string>();
   const uniqueCards: string[] = [];
   const duplicates: string[] = [];
 
   for (const card of cardList) {
     const normalized = card.toLowerCase().trim();
+
+    // Allow unlimited basic lands
+    if (basicLands.includes(normalized)) {
+      uniqueCards.push(card);
+      continue;
+    }
+
     if (seen.has(normalized)) {
       duplicates.push(card);
     } else {
