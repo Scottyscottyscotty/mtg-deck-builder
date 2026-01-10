@@ -16,7 +16,14 @@ const MONTHS_BACK = 6; // How many months of sets to include
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const options = {
+      headers: {
+        'User-Agent': 'MTG-Deck-Builder/1.0',
+        'Accept': 'application/json'
+      }
+    };
+
+    https.get(url, options, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         // Follow redirect
         return httpsGet(res.headers.location).then(resolve).catch(reject);
