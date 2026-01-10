@@ -291,9 +291,26 @@ app.post('/api/build-deck', async (req, res) => {
       ? 'claude-opus-4-5-20251101'
       : 'claude-sonnet-4-5-20250929';
 
-    const prompt = buildDeckPrompt(commander, novelty);
-
     console.log(`\n🏗️  Building deck for ${commander} (novelty: ${novelty}%)...\n`);
+
+    // Look up commander to get color identity for new card filtering
+    const { searchCard, getNewCardsSummary } = await import('./scryfallClient.js');
+    let newCardsSummary = '';
+    try {
+      console.log('🔍 Looking up commander color identity...');
+      const commanderCard = await searchCard(commander);
+      if (commanderCard && commanderCard.color_identity) {
+        console.log(`🆕 Fetching recent cards for colors: ${commanderCard.color_identity.join('') || 'Colorless'}...`);
+        newCardsSummary = await getNewCardsSummary(commanderCard.color_identity, 20);
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not fetch new cards summary:', error);
+      // Continue without new cards - not critical
+    }
+
+    const prompt = buildDeckPrompt(commander, novelty, newCardsSummary);
+
+    console.log('🧠 Generating deck with Claude...\n');
 
     const response = await anthropic.messages.create({
       model: modelId,
@@ -360,9 +377,26 @@ app.post('/api/complete-deck', async (req, res) => {
       ? 'claude-opus-4-5-20251101'
       : 'claude-sonnet-4-5-20250929';
 
-    const prompt = buildCompleteDeckPrompt(commander, parsedDeck, novelty);
-
     console.log(`\n🧩 Completing deck for ${commander} (${parsedDeck.length} cards → 99 cards, novelty: ${novelty}%)...\n`);
+
+    // Look up commander to get color identity for new card filtering
+    const { searchCard, getNewCardsSummary } = await import('./scryfallClient.js');
+    let newCardsSummary = '';
+    try {
+      console.log('🔍 Looking up commander color identity...');
+      const commanderCard = await searchCard(commander);
+      if (commanderCard && commanderCard.color_identity) {
+        console.log(`🆕 Fetching recent cards for colors: ${commanderCard.color_identity.join('') || 'Colorless'}...`);
+        newCardsSummary = await getNewCardsSummary(commanderCard.color_identity, 20);
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not fetch new cards summary:', error);
+      // Continue without new cards - not critical
+    }
+
+    const prompt = buildCompleteDeckPrompt(commander, parsedDeck, novelty, newCardsSummary);
+
+    console.log('🧠 Generating completion suggestions with Claude...\n');
 
     const response = await anthropic.messages.create({
       model: modelId,
@@ -537,11 +571,11 @@ function validateDeckSize(
   };
 }
 
-function buildDeckPrompt(commander: string, novelty: number): string {
+function buildDeckPrompt(commander: string, novelty: number, newCardsSummary: string = ''): string {
   const noveltyLevel = novelty >= 75 ? 'MAXIMUM' : novelty >= 50 ? 'BALANCED' : 'META';
 
   return `You are an expert Magic: The Gathering deck builder. Build a complete 99-card Commander deck for ${commander}.
-
+${newCardsSummary}
 ## ⚠️ CRITICAL: COLOR IDENTITY RULES ⚠️
 
 **ABSOLUTE REQUIREMENT:** ALL cards in this deck MUST match ${commander}'s color identity.
@@ -607,13 +641,13 @@ CRITICAL:
 - ALL cards must match ${commander}'s color identity`;
 }
 
-function buildCompleteDeckPrompt(commander: string, parsedDeck: Array<{name: string, quantity: number}>, novelty: number): string {
+function buildCompleteDeckPrompt(commander: string, parsedDeck: Array<{name: string, quantity: number}>, novelty: number, newCardsSummary: string = ''): string {
   const noveltyLevel = novelty >= 75 ? 'MAXIMUM' : novelty >= 50 ? 'BALANCED' : 'META';
   const currentCards = parsedDeck.map(c => c.name);
   const cardsNeeded = 99 - parsedDeck.length;
 
   return `You are an expert Magic: The Gathering deck builder. The user has a partial Commander deck for ${commander} and needs help completing it.
-
+${newCardsSummary}
 ## Commander
 ${commander}
 
@@ -1038,14 +1072,34 @@ app.post('/api/optimize-collection', async (req: any, res: any) => {
       ? 'claude-opus-4-5-20251101'
       : 'claude-sonnet-4-5-20250929';
 
+    console.log(`\n🧠 Building deck from collection (${collectionCards.length} cards) with ${model}...\n`);
+
+    // Look up commander to get color identity for new card filtering (if specified)
+    const { searchCard, getNewCardsSummary } = await import('./scryfallClient.js');
+    let newCardsSummary = '';
+    if (commander) {
+      try {
+        console.log('🔍 Looking up commander color identity...');
+        const commanderCard = await searchCard(commander);
+        if (commanderCard && commanderCard.color_identity) {
+          console.log(`🆕 Fetching recent cards for colors: ${commanderCard.color_identity.join('') || 'Colorless'}...`);
+          newCardsSummary = await getNewCardsSummary(commanderCard.color_identity, 20);
+        }
+      } catch (error) {
+        console.warn('⚠️  Could not fetch new cards summary:', error);
+        // Continue without new cards - not critical
+      }
+    }
+
     // Build the prompt for collection optimization
     const prompt = buildCollectionOptimizationPrompt(
       collectionCards,
       commander,
-      strategy
+      strategy,
+      newCardsSummary
     );
 
-    console.log(`\n🧠 Building deck from collection (${collectionCards.length} cards) with ${model}...\n`);
+    console.log('🧠 Optimizing collection...\n');
 
     const response = await anthropic.messages.create({
       model: modelId,
@@ -1058,7 +1112,7 @@ app.post('/api/optimize-collection', async (req: any, res: any) => {
     });
 
     const textContent = response.content.find((c: any) => c.type === 'text');
-    if (!textContent) {
+    if (!textContent || textContent.type !== 'text') {
       throw new Error('No text response from Claude');
     }
 
@@ -1097,10 +1151,11 @@ app.post('/api/optimize-collection', async (req: any, res: any) => {
 function buildCollectionOptimizationPrompt(
   collection: string[],
   commander: string | null,
-  strategy: string | null
+  strategy: string | null,
+  newCardsSummary: string = ''
 ): string {
   let prompt = `You are an expert Magic: The Gathering deck builder. Analyze this collection of cards and build an optimized 100-card Commander deck.
-
+${newCardsSummary}
 **Your Collection (${collection.length} cards):**
 ${collection.join(', ')}
 

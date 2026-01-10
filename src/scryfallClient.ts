@@ -147,3 +147,132 @@ export async function enrichDeckWithScryfall(cards: Array<{ quantity: number; na
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+/**
+ * Fetches the latest Magic set(s) from Scryfall
+ * Returns the most recent 1-2 standard-legal or expansion sets
+ */
+export async function getLatestSets(count: number = 2): Promise<Array<{ code: string; name: string; released_at: string }>> {
+  try {
+    const response = await axios.get(`${SCRYFALL_API_BASE}/sets`, {
+      timeout: 10000,
+    });
+
+    const sets = response.data.data;
+
+    // Filter for expansion/core sets, exclude promos, funny sets, etc.
+    const relevantSets = sets.filter((set: any) =>
+      (set.set_type === 'expansion' || set.set_type === 'core') &&
+      !set.digital_only
+    );
+
+    // Sort by release date (newest first)
+    relevantSets.sort((a: any, b: any) =>
+      new Date(b.released_at).getTime() - new Date(a.released_at).getTime()
+    );
+
+    // Return the latest N sets
+    return relevantSets.slice(0, count).map((set: any) => ({
+      code: set.code,
+      name: set.name,
+      released_at: set.released_at,
+    }));
+  } catch (error) {
+    console.error('❌ Failed to fetch latest sets:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches notable cards from a set, filtered by color identity
+ * Returns cards that match the specified colors and are likely to be relevant
+ */
+export async function getSetCardsByColor(
+  setCode: string,
+  colorIdentity: string[],
+  limit: number = 30
+): Promise<ScryfallCard[]> {
+  try {
+    // Build color filter query
+    // If colorIdentity is empty (colorless), search for colorless cards
+    // Otherwise, search for cards that are subsets of the color identity
+    let colorQuery = '';
+    if (colorIdentity.length === 0) {
+      colorQuery = 'c:c'; // Colorless only
+    } else {
+      // Search for cards that contain only colors from the identity
+      colorQuery = `ci<=${colorIdentity.sort().join('')}`;
+    }
+
+    const query = `set:${setCode} ${colorQuery} (t:creature OR t:instant OR t:sorcery OR t:enchantment OR t:artifact OR t:planeswalker) -t:basic`;
+
+    const response = await axios.get(`${SCRYFALL_API_BASE}/cards/search`, {
+      params: {
+        q: query,
+        order: 'edhrec',
+        dir: 'desc',
+        unique: 'cards',
+      },
+      timeout: 15000,
+    });
+
+    await sleep(RATE_LIMIT_DELAY);
+
+    const cards = response.data.data as ScryfallCard[];
+
+    // Return top N cards by EDH popularity
+    return cards.slice(0, limit);
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      // No cards found matching criteria
+      console.warn(`⚠️  No cards found in set ${setCode} for colors ${colorIdentity.join('')}`);
+      return [];
+    }
+    console.error(`❌ Failed to fetch cards from set ${setCode}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Builds a formatted summary of new cards from recent sets
+ * Useful for including in prompts to make Claude aware of recent releases
+ */
+export async function getNewCardsSummary(colorIdentity: string[], maxCards: number = 20): Promise<string> {
+  try {
+    const latestSets = await getLatestSets(2);
+
+    if (latestSets.length === 0) {
+      return '';
+    }
+
+    let summary = '\n## 🆕 Recently Released Cards\n\n';
+    summary += `The following cards from recent sets (${latestSets.map(s => s.name).join(', ')}) may be relevant:\n\n`;
+
+    for (const set of latestSets) {
+      const cards = await getSetCardsByColor(set.code, colorIdentity, Math.floor(maxCards / latestSets.length));
+
+      if (cards.length > 0) {
+        summary += `**${set.name}:**\n`;
+        for (const card of cards) {
+          const colorStr = card.color_identity?.join('') || 'C';
+          summary += `- ${card.name} ${card.mana_cost || ''} [${colorStr}] - ${card.type_line}\n`;
+          if (card.oracle_text) {
+            // Truncate long oracle text
+            const text = card.oracle_text.length > 120
+              ? card.oracle_text.substring(0, 120) + '...'
+              : card.oracle_text;
+            summary += `  ${text.replace(/\n/g, ' ')}\n`;
+          }
+        }
+        summary += '\n';
+      }
+    }
+
+    summary += '**Note:** These are recent cards you may not be familiar with. Feel free to use them if they fit the strategy.\n\n';
+
+    return summary;
+  } catch (error) {
+    console.error('❌ Failed to build new cards summary:', error);
+    return '';
+  }
+}

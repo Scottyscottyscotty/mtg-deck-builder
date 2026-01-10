@@ -26,11 +26,22 @@ export async function analyzeDeck(
   const colorSymbols = deckColorIdentity.length > 0 ? deckColorIdentity.sort().join('') : 'Colorless';
   console.log(`🎨 Deck Color Identity: ${colorSymbols}\n`);
 
+  // Fetch new cards from recent sets for upgrade suggestions
+  const { getNewCardsSummary } = await import('./scryfallClient.js');
+  let newCardsSummary = '';
+  try {
+    console.log('🆕 Fetching recent cards for upgrade suggestions...');
+    newCardsSummary = await getNewCardsSummary(deckColorIdentity, 20);
+  } catch (error) {
+    console.warn('⚠️  Could not fetch new cards summary:', error);
+    // Continue without new cards - not critical
+  }
+
   // Build the deck representation for Claude
   const deckList = formatDeckForClaude(cards);
 
   const prompt = `You are an expert Magic: The Gathering deck analyst. I'm going to provide you with a complete deck list, and I need you to perform a comprehensive analysis.
-
+${newCardsSummary}
 ## Deck List
 
 ${deckList}
