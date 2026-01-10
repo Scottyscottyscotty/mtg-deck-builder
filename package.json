@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "web": "tsx src/web.ts"
+    "web": "tsx src/web.ts",
+    "update-cards": "node update-new-cards.js"
   },
   "keywords": ["mtg", "magic", "deck", "analysis", "ai"],
   "author": "",
