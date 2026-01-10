@@ -1,0 +1,15 @@
+{
+  "_instructions": "To add new cards: Edit the 'cards' array below and add card names. These will be included in all deck building prompts when Scryfall API is unavailable.",
+  "sets": [
+    {
+      "name": "Aetherdrift",
+      "releaseDate": "2025-02-14",
+      "description": "High-speed racing set featuring vehicles and artifacts",
+      "cards": [
+        "Example: Paste your precon decklist here, one card per line",
+        "Example: Omo, Queen of Vesuva",
+        "Example: Chandra, Aetherdrifter"
+      ]
+    }
+  ]
+}

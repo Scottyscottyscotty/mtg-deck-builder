@@ -234,15 +234,64 @@ export async function getSetCardsByColor(
 }
 
 /**
+ * Loads new cards from local fallback file (when API is blocked)
+ */
+async function loadNewCardsFromFile(): Promise<string> {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const filePath = path.join(process.cwd(), 'newcards.json');
+
+    try {
+      const data = await fs.readFile(filePath, 'utf-8');
+      const parsed = JSON.parse(data);
+
+      if (!parsed.sets || parsed.sets.length === 0 || parsed.sets[0].cards.length === 0) {
+        return '';
+      }
+
+      let summary = '\n## 🆕 Recently Released Cards (from local database)\n\n';
+
+      for (const set of parsed.sets) {
+        if (set.cards && set.cards.length > 0) {
+          summary += `**${set.name}** (${set.releaseDate}):\n`;
+          summary += `${set.description || ''}\n\n`;
+
+          // List cards
+          for (const cardName of set.cards) {
+            if (cardName && cardName !== 'Add card names here, one per line in the array below') {
+              summary += `- ${cardName}\n`;
+            }
+          }
+          summary += '\n';
+        }
+      }
+
+      summary += '**Note:** These are recent cards from the above sets. Feel free to use them if they fit the strategy.\n\n';
+
+      return summary;
+    } catch (err) {
+      // File doesn't exist or is invalid, return empty
+      return '';
+    }
+  } catch (error) {
+    console.error('❌ Failed to load newcards.json:', error);
+    return '';
+  }
+}
+
+/**
  * Builds a formatted summary of new cards from recent sets
  * Useful for including in prompts to make Claude aware of recent releases
+ * Falls back to local file if API is unavailable
  */
 export async function getNewCardsSummary(colorIdentity: string[], maxCards: number = 20): Promise<string> {
   try {
     const latestSets = await getLatestSets(2);
 
     if (latestSets.length === 0) {
-      return '';
+      console.log('⚠️  Scryfall API unavailable, checking local newcards.json...');
+      return await loadNewCardsFromFile();
     }
 
     let summary = '\n## 🆕 Recently Released Cards\n\n';
@@ -272,7 +321,7 @@ export async function getNewCardsSummary(colorIdentity: string[], maxCards: numb
 
     return summary;
   } catch (error) {
-    console.error('❌ Failed to build new cards summary:', error);
-    return '';
+    console.error('❌ Failed to build new cards summary, trying local file...', error);
+    return await loadNewCardsFromFile();
   }
 }
