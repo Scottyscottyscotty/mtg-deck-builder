@@ -1,5 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { DeckCard } from './types.js';
+import { formatDeckForClaude } from './utils/deckFormatter.js';
+import { stripMarkdownCodeBlock } from './utils/parser.js';
+import { getModelId, AI_DEFAULTS } from './constants.js';
 
 export interface DeckComparison {
   deck1Summary: string;

@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { ScryfallCard } from './types.js';
+import { sleep } from './utils/async.js';
+import { API_ENDPOINTS, RATE_LIMITS } from './constants.js';
 
-const SCRYFALL_API_BASE = 'https://api.scryfall.com';
-const RATE_LIMIT_DELAY = 100; // ms between requests (Scryfall asks for 50-100ms)
+const SCRYFALL_API_BASE = API_ENDPOINTS.SCRYFALL;
+const RATE_LIMIT_DELAY = RATE_LIMITS.SCRYFALL; // ms between requests (Scryfall asks for 50-100ms)
 
 /**
  * Searches for a card by name using Scryfall's fuzzy search with retry logic
@@ -86,8 +88,4 @@ export async function enrichDeckWithScryfall(cards: Array<{ quantity: number; na
   }
 
   return enrichedCards;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }

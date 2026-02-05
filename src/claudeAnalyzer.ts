@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { DeckCard, DeckAnalysis } from './types.js';
 import { getCardPrices, formatPrice } from './pricingService.js';
+import { formatDeckForClaude } from './utils/deckFormatter.js';
+import { stripMarkdownCodeBlock } from './utils/parser.js';
+import { getModelId, AI_DEFAULTS } from './constants.js';
 
 /**
  * Analyzes a deck using Claude
@@ -12,9 +15,7 @@ export async function analyzeDeck(
 ): Promise<DeckAnalysis> {
   const anthropic = new Anthropic({ apiKey });
 
-  const modelId = model === 'opus'
-    ? 'claude-opus-4-5-20251101'
-    : 'claude-sonnet-4-5-20250929';
+  const modelId = getModelId(model);
 
   console.log(`\n🧠 Analyzing deck with ${model === 'opus' ? 'Claude Opus 4.5' : 'Claude Sonnet 4.5'}...\n`);
 
@@ -82,8 +83,8 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
 
   const response = await anthropic.messages.create({
     model: modelId,
-    max_tokens: 4096,
-    temperature: 0, // Prevent hallucinations - must suggest only real cards
+    max_tokens: AI_DEFAULTS.MAX_TOKENS,
+    temperature: AI_DEFAULTS.TEMPERATURE, // Prevent hallucinations - must suggest only real cards
     messages: [
       {
         role: 'user',
@@ -102,9 +103,7 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
   let analysisText = content.text.trim();
 
   // Remove markdown code blocks if present
-  if (analysisText.startsWith('```')) {
-    analysisText = analysisText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
-  }
+  analysisText = stripMarkdownCodeBlock(analysisText);
 
   const analysis: DeckAnalysis = JSON.parse(analysisText);
 
@@ -134,37 +133,4 @@ Respond with ONLY valid JSON in this exact structure (no markdown, no code block
   console.log('✅ Pricing data added\n');
 
   return analysis;
-}
-
-/**
- * Formats the deck list for Claude in a readable way
- */
-function formatDeckForClaude(cards: DeckCard[]): string {
-  const lines: string[] = [];
-
-  for (const { quantity, name, card } of cards) {
-    if (!card) {
-      lines.push(`${quantity}x ${name} [CARD NOT FOUND]`);
-      continue;
-    }
-
-    const manaCost = card.mana_cost || '';
-    const type = card.type_line;
-    const oracle = card.oracle_text || 'No text';
-
-    lines.push(`${quantity}x ${card.name} ${manaCost}`);
-    lines.push(`   Type: ${type}`);
-    lines.push(`   ${oracle}`);
-
-    if (card.power && card.toughness) {
-      lines.push(`   P/T: ${card.power}/${card.toughness}`);
-    }
-    if (card.loyalty) {
-      lines.push(`   Loyalty: ${card.loyalty}`);
-    }
-
-    lines.push('');
-  }
-
-  return lines.join('\n');
 }

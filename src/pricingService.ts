@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { sleep } from './utils/async.js';
+import { API_ENDPOINTS, RATE_LIMITS, PRICE_TIERS } from './constants.js';
 
-const SCRYFALL_API_BASE = 'https://api.scryfall.com';
-const RATE_LIMIT_DELAY = 100;
+const SCRYFALL_API_BASE = API_ENDPOINTS.SCRYFALL;
+const RATE_LIMIT_DELAY = RATE_LIMITS.SCRYFALL;
 
 export interface CardPrice {
   name: string;
@@ -63,8 +65,8 @@ export async function getCardPrices(cardNames: string[]): Promise<Map<string, Ca
 export function getPriceTier(price: number | null): string {
   if (price === null) return '?';
 
-  if (price < 5) return '$';
-  if (price < 25) return '$$';
+  if (price < PRICE_TIERS.BUDGET) return '$';
+  if (price < PRICE_TIERS.MODERATE) return '$$';
   return '$$$';
 }
 
@@ -74,8 +76,4 @@ export function getPriceTier(price: number | null): string {
 export function formatPrice(price: number | null, tier: string): string {
   if (price === null) return tier;
   return `${tier} ($${price.toFixed(2)})`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }

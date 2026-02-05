@@ -3,6 +3,9 @@ import { DeckCard, DeckAnalysis } from './types.js';
 import { getCardPrices } from './pricingService.js';
 import { findCombos, formatCombo, formatNearMiss } from './comboService.js';
 import { fetchCommanderData, getOverplayedCards, getHiddenGems } from './edhrecService.js';
+import { formatDeckForClaude } from './utils/deckFormatter.js';
+import { stripMarkdownCodeBlock } from './utils/parser.js';
+import { getModelId, AI_DEFAULTS, EDHREC_THRESHOLDS, DECK_SIZES, COLOR_IDENTITY_ORDER } from './constants.js';
 
 export interface AnalysisOptions {
   model?: 'sonnet' | 'opus';
@@ -345,39 +348,6 @@ ${deckList}`;
 - **low**: Experimental or meta-dependent cards (e.g., tech choices, situational cards, anti-meta picks)`;
 
   return prompt;
-}
-
-/**
- * Formats deck for Claude
- */
-function formatDeckForClaude(cards: DeckCard[]): string {
-  const lines: string[] = [];
-
-  for (const { quantity, name, card } of cards) {
-    if (!card) {
-      lines.push(`${quantity}x ${name} [CARD NOT FOUND]`);
-      continue;
-    }
-
-    const manaCost = card.mana_cost || '';
-    const type = card.type_line;
-    const oracle = card.oracle_text || 'No text';
-
-    lines.push(`${quantity}x ${card.name} ${manaCost}`);
-    lines.push(`   Type: ${type}`);
-    lines.push(`   ${oracle}`);
-
-    if (card.power && card.toughness) {
-      lines.push(`   P/T: ${card.power}/${card.toughness}`);
-    }
-    if (card.loyalty) {
-      lines.push(`   Loyalty: ${card.loyalty}`);
-    }
-
-    lines.push('');
-  }
-
-  return lines.join('\n');
 }
 
 /**
